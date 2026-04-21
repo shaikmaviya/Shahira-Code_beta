@@ -1,0 +1,19 @@
+.profile-page {
+  max-width: 820px;
+  margin: 32px auto
+}
+
+.profile-page.profile-logged-out {
+  max-width: 720px
+}
+
+.profile-actions {
+  margin-top: 16px
+}
+
+.profile-card {
+  margin-top: 18px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 16px;
+  padding: 18px
+}

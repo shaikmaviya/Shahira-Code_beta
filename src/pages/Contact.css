@@ -1,0 +1,15 @@
+.contact-page {
+  max-width: 860px;
+  margin: 32px auto
+}
+
+.contact-card {
+  margin-top: 18px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 16px;
+  padding: 18px
+}
+
+.contact-actions {
+  margin-top: 16px
+}

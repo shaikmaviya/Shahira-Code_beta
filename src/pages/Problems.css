@@ -1,0 +1,124 @@
+.problems-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 9, 20, .88);
+  backdrop-filter: blur(4px);
+  z-index: 520;
+  display: grid;
+  place-items: center;
+  padding: 1rem
+}
+
+.problems-modal {
+  width: min(1200px, 98vw);
+  height: min(88vh, 900px);
+  background: linear-gradient(165deg, #0f1424, #0a0f1d);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  box-shadow: 0 24px 65px rgba(0, 0, 0, .55);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column
+}
+
+.problems-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border2)
+}
+
+.problems-head h2 {
+  margin: 0;
+  font-size: 1.45rem
+}
+
+.problems-head p {
+  margin-top: .25rem;
+  color: var(--muted);
+  font-size: .84rem
+}
+
+.problem-folders {
+  padding: .75rem 1rem 0;
+  display: flex;
+  gap: .55rem;
+  flex-wrap: wrap
+}
+
+.folder-btn {
+  border: 1px solid var(--border2);
+  background: rgba(255, 255, 255, .02);
+  color: var(--muted);
+  padding: .38rem .75rem;
+  border-radius: 999px;
+  font-size: .76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s
+}
+
+.folder-btn:hover {
+  color: var(--text);
+  border-color: rgba(0, 212, 255, .45)
+}
+
+.folder-btn.active {
+  color: var(--g);
+  border-color: rgba(0, 245, 160, .45);
+  background: rgba(0, 245, 160, .12)
+}
+
+.problems-list {
+  padding: 1rem;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem
+}
+
+.problem-statement-card {
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .02);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .65rem
+}
+
+.problem-statement-card h3 {
+  font-size: 1.02rem
+}
+
+.problem-statement-card p {
+  color: var(--muted);
+  font-size: .84rem;
+  line-height: 1.62
+}
+
+.problem-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .45rem .9rem;
+  font-size: .8rem
+}
+
+.problem-open-btn svg {
+  width: 14px;
+  height: 14px
+}
+
+.problem-meta {
+  display: flex;
+  gap: .45rem
+}
+
+@media (max-width: 760px) {
+  .problems-list {
+    grid-template-columns: 1fr
+  }
+}

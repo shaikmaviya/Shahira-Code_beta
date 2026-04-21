@@ -1,0 +1,487 @@
+function toInt(value) {
+  return /^-?\d+$/.test(value) ? Number.parseInt(value, 10) : null;
+}
+
+async function flash(runtime, nextArr, nextStates, wait) {
+  runtime.setArr(nextArr);
+  runtime.setStates(nextStates);
+  await runtime.sleep(wait);
+}
+
+async function execPush(runtime, value) {
+  const currentArr = runtime.getArr();
+  runtime.setCx({ time: "O(1)", space: "O(1)" });
+  runtime.addLog(`push(${value}) -> adding`, "info");
+  const next = [...currentArr, value];
+  await flash(runtime, next, next.map((_, i) => (i === next.length - 1 ? "new" : "")), 340);
+  runtime.setStates(next.map(() => ""));
+  runtime.addLog(`Added ${value} at index ${next.length - 1}`, "ok");
+  return JSON.stringify(next);
+}
+
+async function execPop(runtime) {
+  const currentArr = runtime.getArr();
+  if (!currentArr.length) {
+    runtime.addLog("Array is empty", "err");
+    return "";
+  }
+
+  runtime.setCx({ time: "O(1)", space: "O(1)" });
+  const value = currentArr[currentArr.length - 1];
+  runtime.addLog(`pop() -> removing ${value}`, "info");
+  await flash(runtime, currentArr, currentArr.map((_, i) => (i === currentArr.length - 1 ? "removing" : "")), 430);
+  const next = currentArr.slice(0, -1);
+  runtime.setArr(next);
+  runtime.setStates(next.map(() => ""));
+  runtime.addLog(`Removed ${value}`, "ok");
+  return JSON.stringify(next);
+}
+
+async function execShift(runtime) {
+  const currentArr = runtime.getArr();
+  if (!currentArr.length) {
+    runtime.addLog("Array is empty", "err");
+    return "";
+  }
+
+  runtime.setCx({ time: "O(n)", space: "O(1)" });
+  const value = currentArr[0];
+  runtime.addLog(`shift() -> removing ${value} from front`, "info");
+  await flash(runtime, currentArr, currentArr.map((_, i) => (i === 0 ? "removing" : "compare")), 380);
+  const next = currentArr.slice(1);
+  runtime.setArr(next);
+  runtime.setStates(next.map(() => ""));
+  runtime.addLog(`Shifted ${value}`, "ok");
+  return JSON.stringify(next);
+}
+
+async function execUnshift(runtime, value) {
+  const currentArr = runtime.getArr();
+  runtime.setCx({ time: "O(n)", space: "O(1)" });
+  runtime.addLog(`unshift(${value}) -> adding to front`, "info");
+  await flash(runtime, currentArr, currentArr.map(() => "compare"), 320);
+  const next = [value, ...currentArr];
+  await flash(runtime, next, next.map((_, i) => (i === 0 ? "new" : "")), 340);
+  runtime.setStates(next.map(() => ""));
+  runtime.addLog(`Inserted ${value} at index 0`, "ok");
+  return JSON.stringify(next);
+}
+
+async function execSort(runtime) {
+  const currentArr = runtime.getArr();
+  runtime.setCx({ time: "O(n^2)", space: "O(1)" });
+  runtime.addLog("sort() -> bubble sort", "info");
+
+  const a = [...currentArr];
+  for (let i = 0; i < a.length - 1; i += 1) {
+    for (let j = 0; j < a.length - i - 1; j += 1) {
+      runtime.setArr([...a]);
+      runtime.setStates(a.map((_, k) => (k === j || k === j + 1 ? "compare" : "")));
+      await runtime.sleep(280);
+      if (a[j] > a[j + 1]) {
+        [a[j], a[j + 1]] = [a[j + 1], a[j]];
+        runtime.setArr([...a]);
+        runtime.setStates(a.map((_, k) => (k === j || k === j + 1 ? "swap" : "")));
+        runtime.addLog(`Swapped ${a[j]} and ${a[j + 1]}`, "warn");
+        await runtime.sleep(300);
+      }
+    }
+  }
+
+  runtime.setArr([...a]);
+  runtime.setStates(a.map(() => "sorted"));
+  runtime.addLog("Array sorted", "ok");
+  await runtime.sleep(500);
+  runtime.setStates(a.map(() => ""));
+  return JSON.stringify(a);
+}
+
+async function execSearch(runtime, value) {
+  const currentArr = runtime.getArr();
+  runtime.setCx({ time: "O(n)", space: "O(1)" });
+  runtime.addLog(`search(${value}) -> scanning`, "info");
+
+  for (let i = 0; i < currentArr.length; i += 1) {
+    runtime.setStates(currentArr.map((_, k) => (k === i ? "active" : "")));
+    runtime.addLog(`Index ${i}: ${currentArr[i]}`, "info");
+    await runtime.sleep(320);
+    if (currentArr[i] === value) {
+      runtime.setStates(currentArr.map((_, k) => (k === i ? "found" : "")));
+      runtime.addLog(`Found ${value} at index ${i}`, "ok");
+      await runtime.sleep(620);
+      runtime.setStates(currentArr.map(() => ""));
+      return String(i);
+    }
+  }
+
+  runtime.setStates(currentArr.map(() => ""));
+  runtime.addLog(`${value} not found`, "err");
+  return "";
+}
+
+async function execInsert(runtime, index, value) {
+  const currentArr = runtime.getArr();
+  if (index < 0 || index > currentArr.length) {
+    runtime.addLog(`Index out of bounds (0-${currentArr.length})`, "err");
+    return "";
+  }
+
+  runtime.setCx({ time: "O(n)", space: "O(1)" });
+  runtime.addLog(`insert(${index}, ${value}) -> shift right`, "info");
+  await flash(runtime, currentArr, currentArr.map((_, i) => (i >= index ? "compare" : "")), 340);
+
+  const next = [...currentArr];
+  next.splice(index, 0, value);
+  await flash(runtime, next, next.map((_, i) => (i === index ? "new" : "")), 340);
+  runtime.setStates(next.map(() => ""));
+  runtime.addLog(`Inserted ${value} at index ${index}`, "ok");
+  return JSON.stringify(next);
+}
+
+async function execRemove(runtime, index) {
+  const currentArr = runtime.getArr();
+  if (index < 0 || index >= currentArr.length) {
+    runtime.addLog(`Index out of bounds (0-${currentArr.length - 1})`, "err");
+    return "";
+  }
+
+  runtime.setCx({ time: "O(n)", space: "O(1)" });
+  const value = currentArr[index];
+  runtime.addLog(`remove(${index}) -> removing ${value}`, "info");
+  await flash(runtime, currentArr, currentArr.map((_, i) => (i === index ? "removing" : "")), 400);
+
+  const next = [...currentArr];
+  next.splice(index, 1);
+  await flash(runtime, next, next.map((_, i) => (i >= index ? "compare" : "")), 280);
+  runtime.setStates(next.map(() => ""));
+  runtime.addLog(`Removed ${value}`, "ok");
+  return JSON.stringify(next);
+}
+
+async function execReverse(runtime) {
+  const currentArr = runtime.getArr();
+  runtime.setCx({ time: "O(n)", space: "O(1)" });
+  runtime.addLog("reverse() -> two-pointer swap", "info");
+  const a = [...currentArr];
+  let l = 0;
+  let r = a.length - 1;
+
+  while (l < r) {
+    runtime.setArr([...a]);
+    runtime.setStates(a.map((_, i) => (i === l || i === r ? "swap" : "")));
+    await runtime.sleep(320);
+    [a[l], a[r]] = [a[r], a[l]];
+    l += 1;
+    r -= 1;
+    runtime.setArr([...a]);
+    runtime.setStates(a.map(() => ""));
+    await runtime.sleep(180);
+  }
+
+  runtime.setArr([...a]);
+  runtime.setStates(a.map(() => "sorted"));
+  runtime.addLog("Array reversed", "ok");
+  await runtime.sleep(450);
+  runtime.setStates(a.map(() => ""));
+  return JSON.stringify(a);
+}
+
+async function execSum(runtime, target) {
+  const currentArr = runtime.getArr();
+  runtime.setCx({ time: "O(n)", space: "O(n)" });
+  runtime.addLog(`sum(${target}) -> finding two indices`, "info");
+
+  const seen = new Map();
+  for (let i = 0; i < currentArr.length; i += 1) {
+    const needed = target - currentArr[i];
+    runtime.setStates(currentArr.map((_, k) => (k === i ? "active" : "")));
+    await runtime.sleep(300);
+
+    if (seen.has(needed)) {
+      const j = seen.get(needed);
+      runtime.setStates(currentArr.map((_, k) => (k === i || k === j ? "found" : "")));
+      runtime.addLog(`Two Sum result: [${j}, ${i}]`, "ok");
+      await runtime.sleep(650);
+      runtime.setStates(currentArr.map(() => ""));
+      return JSON.stringify([j, i]);
+    }
+
+    seen.set(currentArr[i], i);
+  }
+
+  runtime.setStates(currentArr.map(() => ""));
+  runtime.addLog(`No two numbers found for target ${target}`, "err");
+  return "";
+}
+
+async function execSumByIndices(runtime, i, j) {
+  const currentArr = runtime.getArr();
+  if (i < 0 || i >= currentArr.length || j < 0 || j >= currentArr.length) {
+    runtime.addLog(`Index out of bounds (0-${currentArr.length - 1})`, "err");
+    return "";
+  }
+
+  runtime.setCx({ time: "O(1)", space: "O(1)" });
+  runtime.setStates(currentArr.map((_, k) => (k === i || k === j ? "found" : "")));
+  await runtime.sleep(450);
+
+  const result = currentArr[i] + currentArr[j];
+  runtime.addLog(`sum([${i}, ${j}]) -> ${currentArr[i]} + ${currentArr[j]} = ${result}`, "ok");
+  runtime.setStates(currentArr.map(() => ""));
+  return String(result);
+}
+
+async function execGet(runtime, index) {
+  const currentArr = runtime.getArr();
+  if (index < 0 || index >= currentArr.length) {
+    runtime.addLog(`Index out of bounds (0-${currentArr.length - 1})`, "err");
+    return "";
+  }
+
+  runtime.setCx({ time: "O(1)", space: "O(1)" });
+  runtime.setStates(currentArr.map((_, i) => (i === index ? "found" : "")));
+  await runtime.sleep(320);
+  runtime.setStates(currentArr.map(() => ""));
+  runtime.addLog(`get(${index}) -> ${currentArr[index]}`, "ok");
+  return String(currentArr[index]);
+}
+
+async function execSet(runtime, index, value) {
+  const currentArr = runtime.getArr();
+  if (index < 0 || index >= currentArr.length) {
+    runtime.addLog(`Index out of bounds (0-${currentArr.length - 1})`, "err");
+    return "";
+  }
+
+  runtime.setCx({ time: "O(1)", space: "O(1)" });
+  const next = [...currentArr];
+  next[index] = value;
+  await flash(runtime, next, next.map((_, i) => (i === index ? "new" : "")), 320);
+  runtime.setStates(next.map(() => ""));
+  runtime.addLog(`set(${index}, ${value}) -> updated`, "ok");
+  return JSON.stringify(next);
+}
+
+function execLength(runtime) {
+  const len = runtime.getArr().length;
+  runtime.setCx({ time: "O(1)", space: "O(1)" });
+  runtime.addLog(`length() -> ${len}`, "ok");
+  return String(len);
+}
+
+function execClear(runtime) {
+  runtime.setCx({ time: "O(1)", space: "O(1)" });
+  runtime.setArr([]);
+  runtime.setStates([]);
+  runtime.addLog("clear() -> array reset", "ok");
+  return JSON.stringify([]);
+}
+
+function execMin(runtime) {
+  const currentArr = runtime.getArr();
+  if (!currentArr.length) {
+    runtime.addLog("Array is empty", "err");
+    return "";
+  }
+
+  const min = Math.min(...currentArr);
+  runtime.setCx({ time: "O(n)", space: "O(1)" });
+  runtime.addLog(`min() -> ${min}`, "ok");
+  return String(min);
+}
+
+function execMax(runtime) {
+  const currentArr = runtime.getArr();
+  if (!currentArr.length) {
+    runtime.addLog("Array is empty", "err");
+    return "";
+  }
+
+  const max = Math.max(...currentArr);
+  runtime.setCx({ time: "O(n)", space: "O(1)" });
+  runtime.addLog(`max() -> ${max}`, "ok");
+  return String(max);
+}
+
+export async function executeArrayCode(code, runtime) {
+  const declarationMatch = code.match(/^(?:(?:const|let|var)\s+)?([A-Za-z_$][\w$]*)\s*=\s*\[([^\]]*)\]\s*$/);
+
+  if (declarationMatch) {
+    const [, variableName, rawValues] = declarationMatch;
+    const values = rawValues
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .map((x) => Number.parseInt(x, 10))
+      .filter((x) => Number.isFinite(x));
+
+    runtime.setArrayVarName(variableName);
+    runtime.setArr(values);
+    runtime.setStates(values.map(() => ""));
+    runtime.addLog(`${variableName} initialized with ${values.length} values`, "ok");
+    return JSON.stringify(values);
+  }
+
+  const opMatch = code.match(/^([A-Za-z_$][\w$]*)\s*\.\s*([A-Za-z_][\w]*)\s*\((.*)\)\s*$/);
+  if (!opMatch) {
+    runtime.addLog("Unknown command. Try nums = [1,2,3] or nums.append(9)", "err");
+    return "";
+  }
+
+  const variableName = opMatch[1];
+  const operation = opMatch[2].toLowerCase();
+  const rawArgs = opMatch[3].trim();
+  const args = rawArgs ? rawArgs.split(",").map((x) => x.trim()) : [];
+  runtime.setArrayVarName(variableName);
+
+  if (operation === "push" || operation === "append" || operation === "add") {
+    const value = toInt(args[0] || "");
+    if (value === null) {
+      runtime.addLog("add/append/push expects one numeric value", "err");
+      return "";
+    }
+
+    return await execPush(runtime, value);
+  }
+
+  if (operation === "pop") {
+    return await execPop(runtime);
+  }
+
+  if (operation === "shift") {
+    return await execShift(runtime);
+  }
+
+  if (operation === "unshift") {
+    const value = toInt(args[0] || "");
+    if (value === null) {
+      runtime.addLog("unshift expects one numeric value", "err");
+      return "";
+    }
+
+    return await execUnshift(runtime, value);
+  }
+
+  if (operation === "sort") {
+    return await execSort(runtime);
+  }
+
+  if (operation === "search" || operation === "find" || operation === "index") {
+    const value = toInt(args[0] || "");
+    if (value === null) {
+      runtime.addLog("search/find/index expects one numeric value", "err");
+      return "";
+    }
+
+    return await execSearch(runtime, value);
+  }
+
+  if (operation === "sum") {
+    const pairMatch = rawArgs.match(/^\[\s*(-?\d+)\s*,\s*(-?\d+)\s*\]$/);
+    const firstArg = toInt(args[0] || "");
+    const secondArg = toInt(args[1] || "");
+
+    if (pairMatch) {
+      const i = Number.parseInt(pairMatch[1], 10);
+      const j = Number.parseInt(pairMatch[2], 10);
+      return await execSumByIndices(runtime, i, j);
+    }
+
+    if (firstArg !== null && secondArg !== null && args.length >= 2) {
+      return await execSumByIndices(runtime, firstArg, secondArg);
+    }
+
+    if (firstArg !== null) {
+      return await execSum(runtime, firstArg);
+    }
+
+    runtime.addLog("sum expects sum(target) or sum([i,j]) or sum(i,j)", "err");
+    return "";
+  }
+
+  if (operation === "insert") {
+    const index = toInt(args[0] || "");
+    const value = toInt(args[1] || "");
+    if (index === null || value === null) {
+      runtime.addLog("insert expects index and numeric value", "err");
+      return "";
+    }
+
+    return await execInsert(runtime, index, value);
+  }
+
+  if (operation === "get") {
+    const index = toInt(args[0] || "");
+    if (index === null) {
+      runtime.addLog("get expects one numeric index", "err");
+      return "";
+    }
+
+    return await execGet(runtime, index);
+  }
+
+  if (operation === "set") {
+    const index = toInt(args[0] || "");
+    const value = toInt(args[1] || "");
+    if (index === null || value === null) {
+      runtime.addLog("set expects index and numeric value", "err");
+      return "";
+    }
+
+    return await execSet(runtime, index, value);
+  }
+
+  if (operation === "delete" || operation === "removeat") {
+    const index = toInt(args[0] || "");
+    if (index === null) {
+      runtime.addLog("delete/removeAt expects one numeric index", "err");
+      return "";
+    }
+
+    return await execRemove(runtime, index);
+  }
+
+  if (operation === "remove") {
+    const arg = toInt(args[0] || "");
+    if (arg === null) {
+      runtime.addLog("remove expects one numeric value/index", "err");
+      return "";
+    }
+
+    const currentArr = runtime.getArr();
+    if (arg >= 0 && arg < currentArr.length) {
+      return await execRemove(runtime, arg);
+    }
+
+    const idx = currentArr.indexOf(arg);
+    if (idx === -1) {
+      runtime.addLog(`${arg} not found for remove`, "err");
+      return "";
+    }
+
+    return await execRemove(runtime, idx);
+  }
+
+  if (operation === "reverse") {
+    return await execReverse(runtime);
+  }
+
+  if (operation === "length" || operation === "size") {
+    return execLength(runtime);
+  }
+
+  if (operation === "clear") {
+    return execClear(runtime);
+  }
+
+  if (operation === "min") {
+    return execMin(runtime);
+  }
+
+  if (operation === "max") {
+    return execMax(runtime);
+  }
+
+  runtime.addLog(`Unknown operation: ${operation}`, "err");
+  return "";
+}
