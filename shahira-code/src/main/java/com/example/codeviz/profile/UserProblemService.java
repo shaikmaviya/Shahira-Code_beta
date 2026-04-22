@@ -42,6 +42,7 @@ public class UserProblemService {
         entity.setStatement(normalize(request.statement()));
         entity.setInput(normalize(request.input()));
         entity.setOutput(normalize(request.output()));
+        entity.setSolutionCode(normalize(request.solutionCode()));
         entity.setStatus(normalize(request.status(), "saved"));
         entity.setUpdatedAt(LocalDateTime.now());
 
@@ -62,7 +63,8 @@ public class UserProblemService {
             entity.getStatement(),
             entity.getInput(),
             entity.getOutput(),
-            entity.getStatus()
+            entity.getStatus(),
+            entity.getSolutionCode()
         );
     }
 

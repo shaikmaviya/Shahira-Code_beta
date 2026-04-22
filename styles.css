@@ -37,6 +37,18 @@ body {
   min-height: 100vh
 }
 
+body,
+html {
+  scrollbar-width: none;
+  -ms-overflow-style: none
+}
+
+body::-webkit-scrollbar,
+html::-webkit-scrollbar {
+  width: 0;
+  height: 0
+}
+
 body::before,
 body::after {
   content: "";
@@ -119,7 +131,7 @@ nav {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 1rem 2.5rem;
+  padding: .7rem 2.2rem;
   border-bottom: 1px solid var(--border);
   background: rgba(8, 8, 14, 0.97);
   position: sticky;
@@ -142,7 +154,7 @@ nav {
 }
 
 .logo {
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   font-weight: 800;
   letter-spacing: -1px
 }
@@ -155,11 +167,11 @@ nav {
 .logo small {
   display: inline-block;
   margin-left: .35rem;
-  padding: .1rem .35rem;
+  padding: .06rem .3rem;
   border-radius: 999px;
   background: var(--o);
   color: #121212;
-  font-size: .58rem;
+  font-size: .54rem;
   font-weight: 800;
   letter-spacing: .4px;
   text-transform: uppercase;
@@ -168,14 +180,14 @@ nav {
 
 .nav-links {
   display: flex;
-  gap: 1.8rem;
+  gap: 1.2rem;
   list-style: none
 }
 
 .nav-links a {
   color: var(--muted);
   text-decoration: none;
-  font-size: .85rem;
+  font-size: .8rem;
   letter-spacing: .3px;
   transition: color .2s
 }
@@ -185,7 +197,7 @@ nav {
   background: none;
   border: none;
   padding: 0;
-  font-size: .85rem;
+  font-size: .8rem;
   letter-spacing: .3px;
   font-family: var(--font);
   cursor: pointer;
@@ -204,11 +216,11 @@ nav {
   background: var(--g);
   color: #000;
   border: none;
-  padding: .5rem 1.3rem;
+  padding: .45rem 1.1rem;
   border-radius: 7px;
   font-family: var(--font);
   font-weight: 700;
-  font-size: .85rem;
+  font-size: .8rem;
   cursor: pointer;
   transition: box-shadow .2s, transform .15s
 }
@@ -225,11 +237,11 @@ nav {
 }
 
 .nav-icon-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 9px;
   border: 1px solid rgba(0, 245, 160, .35);
   background: rgba(0, 245, 160, .1);
   color: var(--g);
@@ -598,6 +610,11 @@ h1 .hl {
   font-size: .76rem
 }
 
+.google-btn {
+  display: flex;
+  justify-content: center
+}
+
 /* ── EDITOR WINDOW ── */
 .ewin {
   background: var(--card);
@@ -866,6 +883,14 @@ h1 .hl {
   background: rgba(0, 245, 160, .12);
   border-color: rgba(0, 245, 160, .5);
   color: var(--g)
+}
+
+.abox.expected-hit {
+  border-color: rgba(0, 212, 255, .6);
+  color: var(--b);
+  background: rgba(0, 212, 255, .14);
+  transform: translateY(-6px) scale(1.05);
+  box-shadow: 0 10px 22px rgba(0, 212, 255, .2)
 }
 
 /* pointer arrow */
@@ -1751,6 +1776,11 @@ footer {
   flex-direction: column;
   gap: .8rem;
   min-height: 0
+}
+
+.editor-preview.preview-pass .output-box {
+  border-color: rgba(0, 245, 160, .6);
+  box-shadow: 0 0 0 2px rgba(0, 245, 160, .18), 0 10px 26px rgba(0, 245, 160, .12)
 }
 
 .editor-preview-head {

@@ -4,9 +4,11 @@ import CodeEditor from "./CodeEditor";
 import SimpleEditor from "./SimpleEditor";
 import ProfilePage from "./pages/profile";
 import ContactPage from "./pages/Contact";
+import PricingPage from "./pages/Pricing";
 import Login from "./authentication/Login";
 import Signup from "./authentication/Signup";
 import { logoutUser } from "./authentication/authApi";
+import { createPricingSignup, saveUserProblem, upsertUserProgress } from "./profileApi";
 import { executeArrayCode } from "./dsa/arrays";
 import { executeCode } from "./editorApi";
 
@@ -183,8 +185,18 @@ export default function App() {
   const [simpleEditorLanguage, setSimpleEditorLanguage] = useState("python");
   const [isProblemsOpen, setIsProblemsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
+  const [isContactOpen, setIsContactOpen] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState(null);
-  const [completedProblemIds, setCompletedProblemIds] = useState([]);
+  const [completedProblemIds, setCompletedProblemIds] = useState(() => {
+    try {
+      const raw = localStorage.getItem("codeviz_completed_ids");
+      const parsed = JSON.parse(raw || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const [authPage, setAuthPage] = useState("none");
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -292,6 +304,14 @@ export default function App() {
   }, [arr]);
 
   useEffect(() => {
+    try {
+      localStorage.setItem("codeviz_completed_ids", JSON.stringify(completedProblemIds));
+    } catch {
+      // Ignore storage errors.
+    }
+  }, [completedProblemIds]);
+
+  useEffect(() => {
     if (logRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
@@ -300,7 +320,7 @@ export default function App() {
   useEffect(() => {
     const isAuthOpen = authPage === "login" || authPage === "signup";
 
-    if (!isEditorOpen && !isSimpleEditorOpen && !isProblemsOpen && !isAuthOpen) {
+    if (!isEditorOpen && !isSimpleEditorOpen && !isAuthOpen) {
       return undefined;
     }
 
@@ -310,7 +330,7 @@ export default function App() {
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [isEditorOpen, isSimpleEditorOpen, isProblemsOpen, authPage]);
+  }, [isEditorOpen, isSimpleEditorOpen, authPage]);
 
 
   useEffect(() => {
@@ -329,7 +349,7 @@ export default function App() {
 
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [isProfileOpen, isProblemsOpen, isEditorOpen, isSimpleEditorOpen, authPage]);
+  }, [isProfileOpen, isPricingOpen, isProblemsOpen, isContactOpen, isEditorOpen, isSimpleEditorOpen, authPage]);
 
   async function runCode(rawCode) {
     if (runningRef.current) {
@@ -416,12 +436,14 @@ export default function App() {
       event.preventDefault();
     }
 
-    if (!currentUser) {
-      setAuthPage("login");
-      return;
-    }
-
+    setIsEditorOpen(false);
+    setIsSimpleEditorOpen(false);
+    setIsProfileOpen(false);
+    setIsPricingOpen(false);
+    setAuthPage("none");
+    setIsContactOpen(false);
     setIsProblemsOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function closeProblemsPage() {
@@ -434,17 +456,47 @@ export default function App() {
     setIsProblemsOpen(false);
     setAuthPage("none");
     setIsProfileOpen(true);
+    setIsPricingOpen(false);
+    setIsContactOpen(false);
   }
 
   function closeProfilePage() {
     setIsProfileOpen(false);
   }
 
-  function goHome() {
-    setIsProfileOpen(false);
+  function openPricingPage() {
     setIsEditorOpen(false);
     setIsSimpleEditorOpen(false);
     setIsProblemsOpen(false);
+    setAuthPage("none");
+    setIsProfileOpen(false);
+    setIsPricingOpen(true);
+    setIsContactOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openContactPage(event) {
+    if (event?.preventDefault) {
+      event.preventDefault();
+    }
+
+    setIsEditorOpen(false);
+    setIsSimpleEditorOpen(false);
+    setIsProblemsOpen(false);
+    setIsProfileOpen(false);
+    setIsPricingOpen(false);
+    setAuthPage("none");
+    setIsContactOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function goHome() {
+    setIsProfileOpen(false);
+    setIsPricingOpen(false);
+    setIsEditorOpen(false);
+    setIsSimpleEditorOpen(false);
+    setIsProblemsOpen(false);
+    setIsContactOpen(false);
     setAuthPage("none");
     setSelectedProblem(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -461,7 +513,7 @@ export default function App() {
     setIsEditorOpen(true);
   }
 
-  function markProblemAsCompleted(problemId) {
+  async function markProblemAsCompleted(problemId) {
     if (!problemId) {
       return;
     }
@@ -474,6 +526,61 @@ export default function App() {
       return [...prev, problemId];
     });
     addLog(`Problem #${problemId} marked as completed`, "ok");
+
+    const resolvedProblem = selectedProblem
+      && String(selectedProblem.id) === String(problemId)
+      ? selectedProblem
+      : curatedProblems.find((item) => String(item.id) === String(problemId));
+
+    if (!resolvedProblem) {
+      return;
+    }
+
+    const problemKey = resolvedProblem.title || String(problemId);
+
+    try {
+      const cacheKey = "codeviz_solved_cache";
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || "[]");
+      const hasEntry = cached.some((item) => String(item.problemId) === String(problemKey));
+      if (!hasEntry) {
+        cached.push({
+          problemId: String(problemKey),
+          title: resolvedProblem.title || "Untitled",
+          topic: resolvedProblem.topic || "General",
+          level: resolvedProblem.level || "Easy",
+          completedAt: new Date().toISOString()
+        });
+        localStorage.setItem(cacheKey, JSON.stringify(cached));
+      }
+    } catch {
+      // Cache is optional; ignore failures (private mode or storage limits).
+    }
+
+    const token = localStorage.getItem("codeviz_token");
+    if (!token) {
+      return;
+    }
+
+    try {
+      await saveUserProblem(token, {
+        problemId: String(problemKey),
+        title: resolvedProblem.title || "Untitled",
+        topic: resolvedProblem.topic || "General",
+        level: resolvedProblem.level || "Easy",
+        statement: resolvedProblem.statement || resolvedProblem.description || "",
+        input: resolvedProblem.input || "",
+        output: resolvedProblem.output || "",
+        status: "completed",
+        solutionCode: inputValue
+      });
+
+      await upsertUserProgress(token, {
+        problemId: String(problemKey),
+        status: "completed"
+      });
+    } catch (error) {
+      addLog(error.message || "Unable to save problem progress.", "err");
+    }
   }
 
   async function runCurrentLineFromEditor() {
@@ -620,6 +727,26 @@ export default function App() {
     addLog("Logged out", "info");
   }
 
+  async function handlePricingSignup(planName, price) {
+    const token = localStorage.getItem("codeviz_token");
+    if (!token) {
+      setIsPricingOpen(false);
+      setAuthPage("login");
+      return;
+    }
+
+    try {
+      await createPricingSignup(token, {
+        planName,
+        price,
+        currency: "INR"
+      });
+      addLog(`Pricing signup saved: ${planName}`, "ok");
+    } catch (error) {
+      addLog(error.message || "Unable to save pricing signup.", "err");
+    }
+  }
+
   return (
     <>
       <div className="particles">
@@ -647,9 +774,21 @@ export default function App() {
         </div>
         <div className="nav-center">
           <ul className="nav-links">
+            <li>
+              <a
+                href="#playground"
+                onClick={(event) => {
+                  event.preventDefault();
+                  goHome();
+                }}
+              >
+                Home
+              </a>
+            </li>
             <li><a href="#topics" onClick={goHome}>Topics</a></li>
             <li><button type="button" className="nav-link-btn" onClick={openProblemsPage}>Problems</button></li>
-            <li><a href="#content">Content</a></li>
+            <li><button type="button" className="nav-link-btn" onClick={openPricingPage}>Pricing</button></li>
+            <li><button type="button" className="nav-link-btn" onClick={openContactPage}>Contact</button></li>
           </ul>
         </div>
         <div className="nav-right">
@@ -672,7 +811,12 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <button className="nbtn" onClick={openAuthLogin}>Start Free →</button>
+            <button
+              className="nbtn"
+              onClick={openPricingPage}
+            >
+              Start Free →
+            </button>
           )}
         </div>
       </nav>
@@ -687,7 +831,28 @@ export default function App() {
         />
       )}
 
-      <>
+      {isPricingOpen && (
+        <PricingPage
+          onBack={goHome}
+          onStartFree={() => handlePricingSignup("Free", 0)}
+          onGetSimple={() => handlePricingSignup("Simple", 99)}
+          onGetAdvance={() => handlePricingSignup("Advance", 199)}
+        />
+      )}
+
+      {isProblemsOpen && (
+        <Problems
+          onClose={goHome}
+          onSelectProblem={openProblemInEditor}
+          completedProblemIds={completedProblemIds}
+        />
+      )}
+
+      {isContactOpen && (
+        <ContactPage onBack={goHome} />
+      )}
+
+      {!isPricingOpen && !isProfileOpen && !isProblemsOpen && !isContactOpen && authPage === "none" && <>
       <section className="hero" id="playground" data-reveal>
         <div>
           <div className="badge"><span className="dot" />LIVE CODE → ANIMATION</div>
@@ -876,14 +1041,12 @@ export default function App() {
         </div>
       </section>
 
-      <ContactPage onBack={goHome} />
-
       <footer data-reveal>
         <div className="fl">Shahira <em>Code</em></div>
         <span className="fn2">Built for students. Powered by Shahira Pvt Ltd.</span>
         <span className="fn2">© 2026 Shahira Code</span>
       </footer>
-      </>
+      </>}
 
       <CodeEditor
         isOpen={isEditorOpen}
@@ -918,14 +1081,6 @@ export default function App() {
         onClearPreview={clearPreview}
         executionOutput={executionOutput}
       />
-
-      {isProblemsOpen && (
-        <Problems
-          onClose={closeProblemsPage}
-          onSelectProblem={openProblemInEditor}
-          completedProblemIds={completedProblemIds}
-        />
-      )}
 
       {authPage === "login" && (
         <Login

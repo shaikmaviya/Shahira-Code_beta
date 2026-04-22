@@ -53,6 +53,9 @@ public class UserProblemEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String output;
 
+    @Column(name = "solution_code", nullable = false, columnDefinition = "TEXT")
+    private String solutionCode;
+
     @Column(nullable = false, length = 30)
     private String status;
 
@@ -128,6 +131,14 @@ public class UserProblemEntity {
 
     public void setOutput(String output) {
         this.output = output;
+    }
+
+    public String getSolutionCode() {
+        return solutionCode;
+    }
+
+    public void setSolutionCode(String solutionCode) {
+        this.solutionCode = solutionCode;
     }
 
     public String getStatus() {

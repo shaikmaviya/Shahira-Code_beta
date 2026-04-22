@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { loginUser } from "./authApi";
+import { googleLoginUser, loginUser } from "./authApi";
 
 export default function Login({ onClose, onSwitchToSignup, onLogin }) {
 	const [email, setEmail] = useState("");
@@ -7,9 +7,9 @@ export default function Login({ onClose, onSwitchToSignup, onLogin }) {
 	const [error, setError] = useState("");
 	const [googleReady, setGoogleReady] = useState(false);
 	const [googleError, setGoogleError] = useState("");
-	const [googleLoading, setGoogleLoading] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const googleInitedRef = useRef(false);
+	const googleButtonRef = useRef(null);
 
 	function decodeJwtPayload(token) {
 		try {
@@ -27,24 +27,23 @@ export default function Login({ onClose, onSwitchToSignup, onLogin }) {
 		}
 	}
 
-	function handleGoogleCredential(response) {
+	async function handleGoogleCredential(response) {
 		const payload = decodeJwtPayload(response?.credential || "");
 		if (!payload || !payload.email) {
 			setGoogleError("Google sign-in failed. Please try again.");
-			setGoogleLoading(false);
 			return;
 		}
 
-		const sessionUser = {
-			name: payload.name || payload.given_name || "Google User",
-			email: payload.email,
-			provider: "google"
-		};
+		setGoogleError("");
 
-		localStorage.removeItem("codeviz_token");
-		localStorage.setItem("codeviz_user", JSON.stringify(sessionUser));
-		onLogin(sessionUser);
-		setGoogleLoading(false);
+		try {
+			const authResponse = await googleLoginUser(response.credential);
+			localStorage.setItem("codeviz_token", authResponse.token);
+			localStorage.setItem("codeviz_user", JSON.stringify(authResponse.user));
+			onLogin(authResponse.user);
+		} catch (err) {
+			setGoogleError(err.message || "Google sign-in failed. Please try again.");
+		}
 	}
 
 	useEffect(() => {
@@ -65,6 +64,15 @@ export default function Login({ onClose, onSwitchToSignup, onLogin }) {
 				auto_select: false,
 				cancel_on_tap_outside: true
 			});
+
+			if (googleButtonRef.current) {
+				window.google.accounts.id.renderButton(googleButtonRef.current, {
+					theme: "outline",
+					size: "large",
+					text: "continue_with",
+					width: 280
+				});
+			}
 
 			googleInitedRef.current = true;
 			setGoogleReady(true);
@@ -115,28 +123,12 @@ export default function Login({ onClose, onSwitchToSignup, onLogin }) {
 		}
 	}
 
-	function handleGoogleSigninClick() {
-		if (!googleReady || !window.google?.accounts?.id) {
-			setGoogleError("Google sign-in is still loading. Please wait.");
-			return;
-		}
-
-		setGoogleError("");
-		setGoogleLoading(true);
-		window.google.accounts.id.prompt((notification) => {
-			if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-				setGoogleLoading(false);
-				setGoogleError("Google prompt was closed. Try again.");
-			}
-		});
-	}
-
 	return (
 		<div className="auth-overlay" role="dialog" aria-modal="true" aria-label="Login page">
 			<div className="auth-card">
 				<div className="auth-head">
 					<h2>Login</h2>
-					<p>Access your CodeViz practice account.</p>
+					<p>Access your Shahira Code practice account.</p>
 				</div>
 
 				<form className="auth-form" onSubmit={handleSubmit}>
@@ -170,9 +162,11 @@ export default function Login({ onClose, onSwitchToSignup, onLogin }) {
 						<span>or</span>
 					</div>
 
-					<button type="button" className="google-btn" onClick={handleGoogleSigninClick}>
-						{googleLoading ? "Opening Google..." : "Continue with Google"}
-					</button>
+
+					<div className="google-btn" ref={googleButtonRef} />
+					{!googleReady && (
+						<p className="auth-error">Loading Google sign-in...</p>
+					)}
 
 					{googleError && <p className="auth-error">{googleError}</p>}
 				</form>

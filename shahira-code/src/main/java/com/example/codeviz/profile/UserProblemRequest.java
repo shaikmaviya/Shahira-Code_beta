@@ -8,6 +8,7 @@ public record UserProblemRequest(
     String statement,
     String input,
     String output,
-    String status
+    String status,
+    String solutionCode
 ) {
 }

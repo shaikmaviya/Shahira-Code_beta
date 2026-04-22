@@ -1,38 +1,14 @@
-.problems-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(6, 9, 20, .88);
-  backdrop-filter: blur(4px);
-  z-index: 520;
-  display: grid;
-  place-items: center;
-  padding: 1rem
-}
-
-.problems-modal {
-  width: min(1200px, 98vw);
-  height: min(88vh, 900px);
-  background: linear-gradient(165deg, #0f1424, #0a0f1d);
-  border: 1px solid var(--border2);
-  border-radius: 14px;
-  box-shadow: 0 24px 65px rgba(0, 0, 0, .55);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column
-}
-
 .problems-head {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem;
-  border-bottom: 1px solid var(--border2)
+  margin-bottom: 1rem
 }
 
 .problems-head h2 {
-  margin: 0;
-  font-size: 1.45rem
+  margin: .1rem 0 0;
+  font-size: 1.38rem
 }
 
 .problems-head p {
@@ -41,39 +17,52 @@
   font-size: .84rem
 }
 
-.problem-folders {
-  padding: .75rem 1rem 0;
+.problems-page {
+  max-width: 1200px;
+  padding-top: 1.2rem
+}
+
+.problems-toolbar {
   display: flex;
-  gap: .55rem;
-  flex-wrap: wrap
-}
-
-.folder-btn {
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: .75rem 1rem;
   border: 1px solid var(--border2);
-  background: rgba(255, 255, 255, .02);
+  border-radius: 14px;
+  background: linear-gradient(120deg, rgba(64, 215, 137, 0.12), rgba(84, 221, 173, 0.08))
+}
+
+.problems-filter {
+  display: flex;
+  align-items: center;
+  gap: .75rem
+}
+
+.problems-filter label {
+  font-size: .8rem;
   color: var(--muted);
-  padding: .38rem .75rem;
-  border-radius: 999px;
-  font-size: .76rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all .2s
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  font-weight: 700
 }
 
-.folder-btn:hover {
+.problems-filter select {
+  background: rgba(8, 12, 24, .9);
   color: var(--text);
-  border-color: rgba(0, 212, 255, .45)
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: .45rem .85rem;
+  font-size: .85rem
 }
 
-.folder-btn.active {
-  color: var(--g);
-  border-color: rgba(0, 245, 160, .45);
-  background: rgba(0, 245, 160, .12)
+.problems-count {
+  color: var(--muted);
+  font-size: .82rem
 }
 
 .problems-list {
-  padding: 1rem;
-  overflow: auto;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem
@@ -82,7 +71,7 @@
 .problem-statement-card {
   border: 1px solid var(--border2);
   border-radius: 12px;
-  background: rgba(255, 255, 255, .02);
+  background: linear-gradient(160deg, rgba(20, 20, 40, 0.9), rgba(10, 10, 24, 0.9));
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -114,10 +103,25 @@
 
 .problem-meta {
   display: flex;
-  gap: .45rem
+  gap: .45rem;
+  align-items: center
+}
+
+.problem-meta .solved {
+  margin-left: auto
 }
 
 @media (max-width: 760px) {
+  .problems-head {
+    flex-direction: column;
+    align-items: flex-start
+  }
+
+  .problems-toolbar {
+    flex-direction: column;
+    align-items: flex-start
+  }
+
   .problems-list {
     grid-template-columns: 1fr
   }
