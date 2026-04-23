@@ -922,6 +922,7 @@ h1 .hl {
   padding-top: 2.1rem;
   flex: 1;
   overflow: auto;
+  overflow-x: hidden;
   min-height: 180px;
   max-height: 240px;
   display: flex;
@@ -995,7 +996,8 @@ h1 .hl {
   display: flex;
   gap: .5rem;
   align-items: flex-start;
-  line-height: 1.35
+  line-height: 1.35;
+  min-width: 0
 }
 
 .log-line .ts {
@@ -1009,8 +1011,10 @@ h1 .hl {
   font-size: .82rem;
   flex: 1;
   min-width: 0;
-  white-space: pre;
-  overflow: visible;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overflow: hidden;
   text-overflow: clip
 }
 
@@ -1749,7 +1753,23 @@ footer {
 
 .problem-output-hint {
   font-size: .74rem;
-  color: var(--muted)
+  color: var(--muted);
+  border-radius: 8px;
+  padding: .3rem .45rem;
+  border: 1px solid transparent;
+  transition: border-color .2s ease, background-color .2s ease
+}
+
+.problem-output-hint.is-pass {
+  color: var(--g);
+  border-color: rgba(0, 245, 160, .35);
+  background: rgba(0, 245, 160, .08)
+}
+
+.problem-output-hint.is-fail {
+  color: var(--r);
+  border-color: rgba(255, 80, 96, .35);
+  background: rgba(255, 80, 96, .08)
 }
 
 .problem-output-hint strong {

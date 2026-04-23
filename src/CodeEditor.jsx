@@ -57,6 +57,24 @@ export default function CodeEditor({
     return String(value || "").replace(/\s+/g, " ").trim();
   }
 
+  function outputsMatch(actual, expected) {
+    if (!actual || !expected) {
+      return false;
+    }
+
+    if (actual === expected) {
+      return true;
+    }
+
+    if (actual.includes(expected)) {
+      return true;
+    }
+
+    const actualNumber = actual.match(/-?\d+(?:\.\d+)?(?!.*-?\d+(?:\.\d+)?)/);
+    const expectedNumber = expected.match(/-?\d+(?:\.\d+)?(?!.*-?\d+(?:\.\d+)?)/);
+    return Boolean(actualNumber && expectedNumber && actualNumber[0] === expectedNumber[0]);
+  }
+
   useEffect(() => {
     if (!isOpen) {
       return undefined;
@@ -144,7 +162,7 @@ export default function CodeEditor({
       return;
     }
 
-    if (normalizedResult === expected) {
+    if (outputsMatch(normalizedResult, expected)) {
       setAutoStatus("pass");
       onProblemCompleted(selectedProblem.id);
       return;
@@ -170,7 +188,7 @@ export default function CodeEditor({
       return;
     }
 
-    if (normalizedResult === expected) {
+    if (outputsMatch(normalizedResult, expected)) {
       setAutoStatus("pass");
       onProblemCompleted(selectedProblem.id);
       return;
@@ -360,7 +378,9 @@ export default function CodeEditor({
                 {detectedOutput || "Run the code to detect the result automatically."}
               </div>
               {selectedProblem ? (
-                <div className="problem-output-hint">
+                <div
+                  className={`problem-output-hint ${autoStatus === "pass" ? "is-pass" : autoStatus === "fail" ? "is-fail" : ""}`}
+                >
                   <span><strong>Expected:</strong> {selectedProblem.output}</span>
                 </div>
               ) : null}

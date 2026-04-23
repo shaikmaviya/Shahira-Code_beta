@@ -9,7 +9,7 @@ import Login from "./authentication/Login";
 import Signup from "./authentication/Signup";
 import { logoutUser } from "./authentication/authApi";
 import { createPricingSignup, saveUserProblem, upsertUserProgress } from "./profileApi";
-import { executeArrayCode } from "./dsa/arrays";
+import { executeArrayCode } from "./dsa/arrays/arrays";
 import { executeCode } from "./editorApi";
 
 function sleep(ms) {
@@ -202,6 +202,7 @@ export default function App() {
 
   const runningRef = useRef(false);
   const arrRef = useRef(arr);
+  const scalarVarsRef = useRef({});
   const inputRef = useRef(null);
   const logRef = useRef(null);
   const editorPanelRef = useRef(null);
@@ -262,6 +263,7 @@ export default function App() {
   function clearPreview() {
     setArr([]);
     setStates([]);
+    scalarVarsRef.current = {};
     setExecutionOutput({
       stdout: "",
       stderr: "",
@@ -377,6 +379,11 @@ export default function App() {
         setArr: (nextArr) => {
           arrRef.current = nextArr;
           setArr(nextArr);
+        },
+        getVar: (name) => scalarVarsRef.current[name],
+        hasVar: (name) => Object.prototype.hasOwnProperty.call(scalarVarsRef.current, name),
+        setVar: (name, value) => {
+          scalarVarsRef.current[name] = value;
         },
         setStates,
         setCx,
@@ -600,13 +607,19 @@ export default function App() {
   async function runAllFromEditor() {
     const lines = inputValue
       .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
+      .map((line) => line.replace(/\r$/, ""))
+      .filter((line) => line.trim().length > 0);
+
+    // Run-All should behave like a fresh script execution for scalar variables.
+    scalarVarsRef.current = {};
 
     let latestResult = "";
     for (const line of lines) {
       // Run each command in sequence so animations remain understandable.
-      latestResult = await runCode(line);
+      const currentResult = await runCode(line);
+      if (String(currentResult || "").trim()) {
+        latestResult = currentResult;
+      }
     }
 
     return latestResult;
