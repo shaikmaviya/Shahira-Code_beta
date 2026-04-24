@@ -1,5 +1,10 @@
-.pricing-page {
-  max-width: 1200px
+.sec.pricing-page {
+  max-width: 1200px;
+  padding-top: 0 !important
+}
+
+.sec.pricing-page .stag {
+  margin-top: 1rem;
 }
 
 .pricing-grid {
