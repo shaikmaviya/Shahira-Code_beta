@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import "./Profile.css";
-import { logoutUser, meUser } from "../authentication/authApi";
+import "./ProfilePage.css";
+import { logoutUser, meUser } from "../features/auth/authApi";
 import {
 	getProfile,
 	listUserProblems,
 	listUserProgress,
 	updateProfile
-} from "../profileApi";
+} from "../services/profileApi";
 
 const assetAvatarModules = import.meta.glob(
 	[
@@ -565,15 +565,9 @@ export default function ProfilePage({ onBack, onRequireLogin }) {
 					</div>
 
 					{message && (
-						<p
-							className="ssub"
-							style={{
-								marginTop: "12px",
-								color: status === "error" ? "#ff9f9f" : "#b8f3c9"
-							}}
-						>
+						<div className={`profile-status ${status === "error" ? "is-error" : "is-success"}`}>
 							{message}
-						</p>
+						</div>
 					)}
 
 					<div className="profile-footer">

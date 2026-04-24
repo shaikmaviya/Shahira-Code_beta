@@ -78,6 +78,28 @@ function resolveScalarValue(runtime, token) {
     return asInt;
   }
 
+  const builtinExtremaMatch = trimmed.match(/^(max|min)\(\s*([A-Za-z_$][\w$]*)\s*\)$/);
+  if (builtinExtremaMatch) {
+    const [, op] = builtinExtremaMatch;
+    const arr = runtime.getArr();
+    if (!arr.length) {
+      return undefined;
+    }
+
+    return op === "max" ? Math.max(...arr) : Math.min(...arr);
+  }
+
+  const methodExtremaMatch = trimmed.match(/^([A-Za-z_$][\w$]*)\.\s*(max|min)\s*\(\s*\)$/);
+  if (methodExtremaMatch) {
+    const [, , op] = methodExtremaMatch;
+    const arr = runtime.getArr();
+    if (!arr.length) {
+      return undefined;
+    }
+
+    return op === "max" ? Math.max(...arr) : Math.min(...arr);
+  }
+
   const lenMatch = trimmed.match(/^len\(\s*([A-Za-z_$][\w$]*)\s*\)$/);
   if (lenMatch) {
     return runtime.getArr().length;
@@ -615,7 +637,7 @@ export async function executeArrayCode(code, runtime) {
     return await execForOfLoop(runtime, valueName);
   }
 
-  const printMatch = pythonNormalizedCode.match(/^print\((.*)\)$/);
+  const printMatch = pythonNormalizedCode.match(/^(?:print|System\.out\.println)\((.*)\)\s*;?$/);
   if (printMatch) {
     const rawArgs = printMatch[1].trim();
     if (!rawArgs) {

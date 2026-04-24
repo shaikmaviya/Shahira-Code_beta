@@ -1,5 +1,5 @@
 import React from "react";
-import "./Contact.css";
+import "./ContactPage.css";
 
 export default function ContactPage({ onBack }) {
   return (

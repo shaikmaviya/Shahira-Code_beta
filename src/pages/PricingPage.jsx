@@ -1,4 +1,4 @@
-import "./Pricing.css";
+import "./PricingPage.css";
 
 export default function PricingPage({ onBack, onStartFree, onGetSimple, onGetAdvance }) {
   return (

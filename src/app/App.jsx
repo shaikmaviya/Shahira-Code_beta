@@ -1,16 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import Problems from "./pages/Problems";
-import CodeEditor from "./CodeEditor";
-import SimpleEditor from "./SimpleEditor";
-import ProfilePage from "./pages/profile";
-import ContactPage from "./pages/Contact";
-import PricingPage from "./pages/Pricing";
-import Login from "./authentication/Login";
-import Signup from "./authentication/Signup";
-import { logoutUser } from "./authentication/authApi";
-import { createPricingSignup, saveUserProblem, upsertUserProgress } from "./profileApi";
-import { executeArrayCode } from "./dsa/arrays/arrays";
-import { executeCode } from "./editorApi";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ProblemsPage from "../pages/ProblemsPage";
+import CodeEditor from "../components/editors/CodeEditor";
+import SimpleEditor from "../components/editors/SimpleEditor";
+import ProfilePage from "../pages/ProfilePage";
+import ContactPage from "../pages/ContactPage";
+import PricingPage from "../pages/PricingPage";
+import HomePage from "../pages/HomePage";
+import Login from "../features/auth/Login";
+import Signup from "../features/auth/Signup";
+import { logoutUser } from "../features/auth/authApi";
+import { createPricingSignup, saveUserProblem, upsertUserProgress } from "../services/profileApi";
+import { executeArrayCode } from "../features/arrays/executeArrayCode";
+import { executeCode } from "../services/editorApi";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -132,6 +133,33 @@ function extractArrayFromCode(code) {
   return null;
 }
 
+function extractAssignmentFromProblemInput(problemInput) {
+  if (!problemInput) {
+    return null;
+  }
+
+  const match = String(problemInput).match(/([A-Za-z_$][\w$]*)\s*=\s*\[[^\]]*\]/);
+  return match ? match[0] : null;
+}
+
+function buildProblemStarterCode(problem) {
+  if (!problem) {
+    return "";
+  }
+
+  const assignment = extractAssignmentFromProblemInput(problem.input || "");
+  const variableNameMatch = assignment?.match(/^([A-Za-z_$][\w$]*)\s*=/);
+  const variableName = variableNameMatch ? variableNameMatch[1] : "arr";
+  const starterCommand = (problem.starterCommand || "").replace(/\barr\b/g, variableName);
+
+  return [assignment, starterCommand].filter(Boolean).join("\n");
+}
+
+function isPrintStatement(code) {
+  const normalized = String(code || "").trim();
+  return /^(?:print|System\.out\.println)\s*\(.*\)\s*;?\s*$/.test(normalized);
+}
+
 const curatedProblems = [
   {
     title: "Two Sum",
@@ -163,10 +191,27 @@ const curatedProblems = [
   }
 ];
 
+const ROUTE_PATHS = {
+  home: "/",
+  problems: "/problems",
+  profile: "/profile",
+  pricing: "/pricing",
+  contact: "/contact",
+  login: "/login",
+  signup: "/signup"
+};
+
+function normalizePath(pathname) {
+  if (!pathname || pathname === "/") {
+    return "/";
+  }
+
+  return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+}
+
 export default function App() {
   const [arr, setArr] = useState([12, 45, 7, 33, 21]);
   const [states, setStates] = useState(["", "", "", "", ""]);
-  const [lineCount, setLineCount] = useState(6);
   const [history, setHistory] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [activeTopic, setActiveTopic] = useState("Arrays");
@@ -243,6 +288,49 @@ export default function App() {
     []
   );
   const topicMarquee = useMemo(() => [...topics, ...topics], [topics]);
+  const introEditorLines = useMemo(
+    () => [
+      { type: "comment", content: "Shahira Code React Live Editor" },
+      { type: "comment", content: "Use any variable: nums, myArray, data..." },
+      { type: "blank", content: "" },
+      { type: "code", content: `${arrayVarName} = []` },
+      { type: "blank", content: "" }
+    ],
+    [arrayVarName]
+  );
+  const nextLandingLineNumber = introEditorLines.length + history.length + 1;
+
+  const syncRouteState = useCallback((pathname) => {
+    const normalizedPath = normalizePath(pathname);
+    const knownPaths = new Set(Object.values(ROUTE_PATHS));
+    const resolvedPath = knownPaths.has(normalizedPath) ? normalizedPath : ROUTE_PATHS.home;
+
+    if (resolvedPath !== normalizedPath) {
+      window.history.replaceState({}, "", resolvedPath);
+    }
+
+    setIsProblemsOpen(resolvedPath === ROUTE_PATHS.problems);
+    setIsProfileOpen(resolvedPath === ROUTE_PATHS.profile);
+    setIsPricingOpen(resolvedPath === ROUTE_PATHS.pricing);
+    setIsContactOpen(resolvedPath === ROUTE_PATHS.contact);
+    setAuthPage(
+      resolvedPath === ROUTE_PATHS.login
+        ? "login"
+        : resolvedPath === ROUTE_PATHS.signup
+          ? "signup"
+          : "none"
+    );
+  }, []);
+
+  const navigateTo = useCallback((pathname) => {
+    const normalizedPath = normalizePath(pathname);
+
+    if (window.location.pathname !== normalizedPath) {
+      window.history.pushState({}, "", normalizedPath);
+    }
+
+    syncRouteState(normalizedPath);
+  }, [syncRouteState]);
 
   function addLog(message, type = "ok") {
     setLogs((prev) => {
@@ -353,6 +441,19 @@ export default function App() {
     return () => observer.disconnect();
   }, [isProfileOpen, isPricingOpen, isProblemsOpen, isContactOpen, isEditorOpen, isSimpleEditorOpen, authPage]);
 
+  useEffect(() => {
+    syncRouteState(window.location.pathname);
+
+    function handlePopState() {
+      syncRouteState(window.location.pathname);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [syncRouteState]);
+
   async function runCode(rawCode) {
     if (runningRef.current) {
       return "";
@@ -365,12 +466,11 @@ export default function App() {
 
     runningRef.current = true;
     setHistory((prev) => {
-      const next = [...prev, { line: lineCount, code }];
+      const next = [...prev, { code }];
 
       // Keep command history bounded for a stable editor height/performance.
       return next.slice(-250);
     });
-    setLineCount((prev) => prev + 1);
     let result = "";
 
     try {
@@ -410,7 +510,7 @@ export default function App() {
 
   function openEditor() {
     if (!currentUser) {
-      setAuthPage("login");
+      navigateTo(ROUTE_PATHS.login);
       return;
     }
 
@@ -445,40 +545,28 @@ export default function App() {
 
     setIsEditorOpen(false);
     setIsSimpleEditorOpen(false);
-    setIsProfileOpen(false);
-    setIsPricingOpen(false);
-    setAuthPage("none");
-    setIsContactOpen(false);
-    setIsProblemsOpen(true);
+    navigateTo(ROUTE_PATHS.problems);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function closeProblemsPage() {
-    setIsProblemsOpen(false);
+    navigateTo(ROUTE_PATHS.home);
   }
 
   function openProfilePage() {
     setIsEditorOpen(false);
     setIsSimpleEditorOpen(false);
-    setIsProblemsOpen(false);
-    setAuthPage("none");
-    setIsProfileOpen(true);
-    setIsPricingOpen(false);
-    setIsContactOpen(false);
+    navigateTo(ROUTE_PATHS.profile);
   }
 
   function closeProfilePage() {
-    setIsProfileOpen(false);
+    navigateTo(ROUTE_PATHS.home);
   }
 
   function openPricingPage() {
     setIsEditorOpen(false);
     setIsSimpleEditorOpen(false);
-    setIsProblemsOpen(false);
-    setAuthPage("none");
-    setIsProfileOpen(false);
-    setIsPricingOpen(true);
-    setIsContactOpen(false);
+    navigateTo(ROUTE_PATHS.pricing);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -489,32 +577,27 @@ export default function App() {
 
     setIsEditorOpen(false);
     setIsSimpleEditorOpen(false);
-    setIsProblemsOpen(false);
-    setIsProfileOpen(false);
-    setIsPricingOpen(false);
-    setAuthPage("none");
-    setIsContactOpen(true);
+    navigateTo(ROUTE_PATHS.contact);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function goHome() {
-    setIsProfileOpen(false);
-    setIsPricingOpen(false);
     setIsEditorOpen(false);
     setIsSimpleEditorOpen(false);
-    setIsProblemsOpen(false);
-    setIsContactOpen(false);
-    setAuthPage("none");
     setSelectedProblem(null);
+    navigateTo(ROUTE_PATHS.home);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function openProblemInEditor(problem) {
+    const starterCode = buildProblemStarterCode(problem);
+    const extractedProblemArray = extractArrayFromCode(starterCode);
+
     setIsProblemsOpen(false);
-    setInputValue("");
-    setArrayVarName("arr");
-    setArr([]);
-    setStates([]);
+    setInputValue(starterCode);
+    setArrayVarName(extractedProblemArray?.name || "arr");
+    setArr(extractedProblemArray?.values || []);
+    setStates(Array.isArray(extractedProblemArray?.values) ? extractedProblemArray.values.map(() => "") : []);
     setSelectedProblem(problem || null);
     setIsSimpleEditorOpen(false);
     setIsEditorOpen(true);
@@ -590,16 +673,28 @@ export default function App() {
     }
   }
 
-  async function runCurrentLineFromEditor() {
-    const lines = inputValue
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
-
-    const latest = lines.length ? lines[lines.length - 1] : "";
+  async function runCurrentLineFromEditor(lineNumber) {
+    const lines = inputValue.split("\n");
+    const requestedIndex = typeof lineNumber === "number" ? lineNumber - 1 : lines.length - 1;
+    const safeIndex = Math.min(Math.max(requestedIndex, 0), Math.max(lines.length - 1, 0));
+    const latest = (lines[safeIndex] || "").trim();
     if (latest) {
-      return await runCode(latest);
+      const result = await runCode(latest);
+      setExecutionOutput({
+        stdout: isPrintStatement(latest) && result ? result : "",
+        stderr: "",
+        output: isPrintStatement(latest) && result ? result : "",
+        language: "visual"
+      });
+      return result;
     }
+
+    setExecutionOutput({
+      stdout: "",
+      stderr: "",
+      output: "",
+      language: "visual"
+    });
 
     return "";
   }
@@ -614,13 +709,26 @@ export default function App() {
     scalarVarsRef.current = {};
 
     let latestResult = "";
+    const printOutputs = [];
     for (const line of lines) {
       // Run each command in sequence so animations remain understandable.
       const currentResult = await runCode(line);
       if (String(currentResult || "").trim()) {
         latestResult = currentResult;
       }
+
+      if (isPrintStatement(line) && String(currentResult || "").trim()) {
+        printOutputs.push(String(currentResult).trim());
+      }
     }
+
+    const combinedPrintOutput = printOutputs.join("\n");
+    setExecutionOutput({
+      stdout: combinedPrintOutput,
+      stderr: "",
+      output: combinedPrintOutput,
+      language: "visual"
+    });
 
     return latestResult;
   }
@@ -692,7 +800,7 @@ export default function App() {
 
   function runProblemDemo(command) {
     if (!currentUser) {
-      setAuthPage("login");
+      navigateTo(ROUTE_PATHS.login);
       return;
     }
 
@@ -702,22 +810,22 @@ export default function App() {
   }
 
   function openAuthLogin() {
-    setAuthPage("login");
+    navigateTo(ROUTE_PATHS.login);
   }
 
   function closeAuthPages() {
-    setAuthPage("none");
+    navigateTo(ROUTE_PATHS.home);
   }
 
   function handleLoginSuccess(user) {
     setCurrentUser(user);
-    setAuthPage("none");
+    navigateTo(ROUTE_PATHS.home);
     addLog(`Welcome back, ${user.name}`, "ok");
   }
 
   function handleSignupSuccess(user) {
     setCurrentUser(user);
-    setAuthPage("none");
+    navigateTo(ROUTE_PATHS.home);
     addLog(`Account created for ${user.name}`, "ok");
   }
 
@@ -734,17 +842,15 @@ export default function App() {
     setCurrentUser(null);
     setIsEditorOpen(false);
     setIsSimpleEditorOpen(false);
-    setIsProblemsOpen(false);
-    setIsProfileOpen(false);
     setSelectedProblem(null);
+    navigateTo(ROUTE_PATHS.home);
     addLog("Logged out", "info");
   }
 
   async function handlePricingSignup(planName, price) {
     const token = localStorage.getItem("codeviz_token");
     if (!token) {
-      setIsPricingOpen(false);
-      setAuthPage("login");
+      navigateTo(ROUTE_PATHS.login);
       return;
     }
 
@@ -789,7 +895,7 @@ export default function App() {
           <ul className="nav-links">
             <li>
               <a
-                href="#playground"
+                href={ROUTE_PATHS.home}
                 onClick={(event) => {
                   event.preventDefault();
                   goHome();
@@ -798,7 +904,7 @@ export default function App() {
                 Home
               </a>
             </li>
-            <li><a href="#topics" onClick={goHome}>Topics</a></li>
+            <li><a href={`${ROUTE_PATHS.home}#topics`} onClick={goHome}>Topics</a></li>
             <li><button type="button" className="nav-link-btn" onClick={openProblemsPage}>Problems</button></li>
             <li><button type="button" className="nav-link-btn" onClick={openPricingPage}>Pricing</button></li>
             <li><button type="button" className="nav-link-btn" onClick={openContactPage}>Contact</button></li>
@@ -839,7 +945,7 @@ export default function App() {
           onBack={goHome}
           onRequireLogin={() => {
             setIsProfileOpen(false);
-            setAuthPage("login");
+            navigateTo(ROUTE_PATHS.login);
           }}
         />
       )}
@@ -854,7 +960,7 @@ export default function App() {
       )}
 
       {isProblemsOpen && (
-        <Problems
+        <ProblemsPage
           onClose={goHome}
           onSelectProblem={openProblemInEditor}
           completedProblemIds={completedProblemIds}
@@ -865,201 +971,35 @@ export default function App() {
         <ContactPage onBack={goHome} />
       )}
 
-      {!isPricingOpen && !isProfileOpen && !isProblemsOpen && !isContactOpen && authPage === "none" && <>
-      <section className="hero" id="playground" data-reveal>
-        <div>
-          <div className="badge"><span className="dot" />LIVE CODE → ANIMATION</div>
-          <h1>Type Code.<br /><span className="hl">See It Move.</span></h1>
-          <p className="sub">
-            Build deep intuition using live visual animation of array operations, comparisons, shifts, and complexity impact.
-          </p>
-          <div className="hbtns">
-            <button className="bp" onClick={openEditor}>Open Editor ↗</button>
-            <button className="bg demo-btn" onClick={runDemo}>
-              Watch Demo
-              <span className="demo-arrow" aria-hidden="true">→</span>
-            </button>
-          </div>
-          <div className="quick-actions">
-            <button className="qa" onClick={() => runCode("arr.append(88)")}>append</button>
-            <button className="qa" onClick={() => runCode("arr.index(33)")}>search</button>
-            <button className="qa" onClick={() => runCode("arr.insert(1, 50)")}>insert</button>
-            <button className="qa" onClick={() => runCode("arr.reverse()")}>reverse</button>
-          </div>
-        </div>
-
-        <div ref={editorPanelRef}>
-          <div className={`ewin ${editorGlow ? "editor-glow" : ""}`}>
-            <div className="ebar">
-              <div className="ed" style={{ background: "#ff5f57" }} />
-              <div className="ed" style={{ background: "#febc2e" }} />
-              <div className="ed" style={{ background: "#28c840" }} />
-              <span className="etitle">playground.dsa - Shahira Code</span>
-              <span className="elang">DSA</span>
-            </div>
-
-            <div className="esplit">
-              <div className="cpane">
-                <div className="cline"><span className="ln">1</span><span className="ct"><span className="cm">// Shahira Code React Live Editor</span></span></div>
-                <div className="cline"><span className="ln">2</span><span className="ct"><span className="cm">// Use any variable: nums, myArray, data...</span></span></div>
-                <div className="cline"><span className="ln">3</span><span className="ct" /></div>
-                <div className="cline"><span className="ln">4</span><span className="ct"><span className="kw">{arrayVarName}</span> = []</span></div>
-                <div className="cline"><span className="ln">5</span><span className="ct" /></div>
-
-                {history.map((item) => (
-                  <div key={`${item.line}-${item.code}`} className="cline">
-                    <span className="ln">{item.line}</span>
-                    <span className="ct" dangerouslySetInnerHTML={{ __html: syntaxColor(item.code) }} />
-                  </div>
-                ))}
-
-                <div id="inputLine">
-                  <span className="ln">{lineCount}</span>
-                  <input
-                    ref={inputRef}
-                    id="userInput"
-                    placeholder="nums = [3,1,2] or myArray.append(9)"
-                    spellCheck="false"
-                    autoComplete="off"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={onEnter}
-                  />
-                </div>
-              </div>
-
-              <div className="apane">
-                <span className="alabel">Live Preview</span>
-                <div style={{ position: "relative", paddingBottom: "22px" }}>
-                  <div className="arow">
-                    {arr.map((value, i) => (
-                      <div key={`${value}-${i}`} className={`abox ${states[i] || ""}`}>
-                        {value}
-                        <span className="idx">{i}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="cx-row">
-                  <span className="cxbadge cxt">Time: {cx.time}</span>
-                  <span className="cxbadge cxs">Space: {cx.space}</span>
-                </div>
-
-                <div className="log-box" ref={logRef}>
-                  <div className="log-box-head">
-                    <button
-                      type="button"
-                      className="log-clear-btn"
-                      onClick={clearLogs}
-                      aria-label="Clear logs"
-                      title="Clear logs"
-                    >
-                      <img src="/src/assets/broom.png" alt="" className="icon-image" />
-                    </button>
-            
-                  </div>
-                  {logs.length === 0 && (
-                    <div className="log-empty">No logs yet.</div>
-                  )}
-                  {logs.map((entry) => (
-                    <div key={entry.id} className={`log-line ${entry.type}`}>
-                      <span className="ts">{entry.time}</span>
-                      <span className="lm">{entry.message}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="sec" id="problems" data-reveal>
-        <p className="stag">Problem Sets</p>
-        <h2>Curated Practice With Live Demos</h2>
-        <p className="ssub">Pick a problem card to trigger an animation pattern and understand the operation sequence visually.</p>
-        <div className="problem-grid">
-          {curatedProblems.map((item) => (
-            <article key={item.title} className="problem-card">
-              <div className="problem-top">
-                <span className={`pill level-${item.level.toLowerCase()}`}>{item.level}</span>
-                <span className="pill topic">{item.topic}</span>
-              </div>
-              <h3>{item.title}</h3>
-              <p>{item.description}</p>
-              <button className="bp small" onClick={() => runProblemDemo(item.command)}>
-                Run: {item.command}
-              </button>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="sec" data-reveal>
-        <p className="stag">Why Shahira Code</p>
-        <h2>Built Different</h2>
-        <p className="ssub">Every feature is designed around one goal - making DSA logic click instantly.</p>
-        <div className="fgrid">
-          <div className="fc"><div className="fic" style={{ background: "rgba(0,245,160,.1)" }}>⚡</div><h3>Live Sync</h3><p>Every character you type drives the animation instantly.</p></div>
-          <div className="fc"><div className="fic" style={{ background: "rgba(0,212,255,.1)" }}>🧠</div><h3>Step Logic</h3><p>Step messages make every memory change obvious.</p></div>
-          <div className="fc"><div className="fic" style={{ background: "rgba(255,170,0,.1)" }}>📊</div><h3>Complexity Live</h3><p>Time and space update as each operation runs.</p></div>
-          <div className="fc"><div className="fic" style={{ background: "rgba(192,132,252,.1)" }}>🎯</div><h3>Placement Ready</h3><p>Practice with realistic operation patterns and visuals.</p></div>
-          <div className="fc"><div className="fic" style={{ background: "rgba(0,245,160,.1)" }}>🌐</div><h3>Python Friendly</h3><p>Use Python-like syntax such as arr.append and arr.index.</p></div>
-          <div className="fc"><div className="fic" style={{ background: "rgba(0,212,255,.1)" }}>📈</div><h3>Progress Feel</h3><p>Visual feedback helps build intuition faster.</p></div>
-        </div>
-      </section>
-
-      <section className="topics-sec" id="topics" data-reveal>
-        <div className="tinner">
-          <p className="stag">Topics</p>
-          <h2>All Core DSA Topics</h2>
-          <p className="ssub">Every must-know area, always in motion. Tap one to spotlight it.</p>
-          <div className="topic-marquee">
-            <div className="topic-track">
-              {topicMarquee.map((topic, index) => (
-                <button
-                  key={`topic-a-${topic}-${index}`}
-                  type="button"
-                  className={`tp ${topic === activeTopic ? "act" : ""}`}
-                  onClick={() => setActiveTopic(topic)}
-                >
-                  {topic}
-                </button>
-              ))}
-            </div>
-            <div className="topic-track reverse">
-              {topicMarquee.map((topic, index) => (
-                <button
-                  key={`topic-b-${topic}-${index}`}
-                  type="button"
-                  className={`tp ${topic === activeTopic ? "act" : ""}`}
-                  onClick={() => setActiveTopic(topic)}
-                >
-                  {topic}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="cta" data-reveal>
-        <p className="stag" style={{ textAlign: "center" }}>GET STARTED</p>
-        <h2>Start Visualizing Today</h2>
-        <p>Free for students. No install. No credit card. Just open and start coding.</p>
-        <div className="ctabtns">
-          <button className="bp" onClick={openEditor}>Open Shahira Code Free ↗</button>
-          <button className="bg" onClick={() => goToTopics("Sorting")}>See All Topics</button>
-        </div>
-      </section>
-
-      <footer data-reveal>
-        <div className="fl">Shahira <em>Code</em></div>
-        <span className="fn2">Built for students. Powered by Shahira Pvt Ltd.</span>
-        <span className="fn2">© 2026 Shahira Code</span>
-      </footer>
-      </>}
+      {!isPricingOpen && !isProfileOpen && !isProblemsOpen && !isContactOpen && authPage === "none" && (
+        <HomePage
+          inputRef={inputRef}
+          editorPanelRef={editorPanelRef}
+          logRef={logRef}
+          editorGlow={editorGlow}
+          introEditorLines={introEditorLines}
+          history={history}
+          nextLandingLineNumber={nextLandingLineNumber}
+          syntaxColor={syntaxColor}
+          inputValue={inputValue}
+          onInputChange={setInputValue}
+          onInputKeyDown={onEnter}
+          arr={arr}
+          states={states}
+          cx={cx}
+          logs={logs}
+          onClearLogs={clearLogs}
+          onOpenEditor={openEditor}
+          onRunDemo={runDemo}
+          onRunQuickAction={runCode}
+          curatedProblems={curatedProblems}
+          onRunProblemDemo={runProblemDemo}
+          topicMarquee={topicMarquee}
+          activeTopic={activeTopic}
+          onSetActiveTopic={setActiveTopic}
+          onGoToTopics={goToTopics}
+        />
+      )}
 
       <CodeEditor
         isOpen={isEditorOpen}
@@ -1073,6 +1013,7 @@ export default function App() {
         arr={arr}
         states={states}
         cx={cx}
+        arrayVarName={arrayVarName}
         logs={logs}
         onClearLogs={clearLogs}
         onClearPreview={clearPreview}
@@ -1089,6 +1030,7 @@ export default function App() {
         onLanguageChange={setSimpleEditorLanguage}
         arr={arr}
         states={states}
+        arrayVarName={arrayVarName}
         logs={logs}
         onClearLogs={clearLogs}
         onClearPreview={clearPreview}
@@ -1098,7 +1040,7 @@ export default function App() {
       {authPage === "login" && (
         <Login
           onClose={closeAuthPages}
-          onSwitchToSignup={() => setAuthPage("signup")}
+          onSwitchToSignup={() => navigateTo(ROUTE_PATHS.signup)}
           onLogin={handleLoginSuccess}
         />
       )}
@@ -1106,10 +1048,11 @@ export default function App() {
       {authPage === "signup" && (
         <Signup
           onClose={closeAuthPages}
-          onSwitchToLogin={() => setAuthPage("login")}
+          onSwitchToLogin={() => navigateTo(ROUTE_PATHS.login)}
           onSignup={handleSignupSuccess}
         />
       )}
     </>
   );
 }
+

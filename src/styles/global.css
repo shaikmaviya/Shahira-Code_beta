@@ -690,7 +690,14 @@ h1 .hl {
   font-size: .8rem;
   line-height: 1.85;
   overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   position: relative
+}
+
+.cpane::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .cline {
@@ -1679,7 +1686,10 @@ footer {
   padding: .9rem;
   resize: none;
   outline: none;
-  scrollbar-width: none
+  scrollbar-width: none;
+  white-space: pre;
+  overflow-wrap: normal;
+  tab-size: 2
 }
 
 .full-editor-input::-webkit-scrollbar {
@@ -1709,12 +1719,17 @@ footer {
   text-align: right;
   color: var(--muted);
   font-family: var(--mono);
-  font-size: .8rem;
+  font-size: .9rem;
   line-height: 1.6;
   border-right: 1px solid var(--border2);
   background: rgba(8, 12, 22, .7);
   overflow: auto;
   scrollbar-width: none
+}
+
+.editor-line-numbers div {
+  height: calc(.9rem * 1.6);
+  line-height: calc(.9rem * 1.6);
 }
 
 .editor-line-numbers::-webkit-scrollbar {
@@ -1801,6 +1816,21 @@ footer {
 .editor-preview.preview-pass .output-box {
   border-color: rgba(0, 245, 160, .6);
   box-shadow: 0 0 0 2px rgba(0, 245, 160, .18), 0 10px 26px rgba(0, 245, 160, .12)
+}
+
+.editor-preview.preview-pass .preview-label {
+  color: var(--g)
+}
+
+.abox.expected-match {
+  border-color: rgba(0, 245, 160, .85);
+  background: linear-gradient(180deg, rgba(0, 245, 160, .2), rgba(0, 245, 160, .08));
+  box-shadow: 0 0 0 2px rgba(0, 245, 160, .14), 0 14px 30px rgba(0, 245, 160, .16);
+  color: #f3fff9
+}
+
+.abox.expected-match .idx {
+  color: rgba(220, 255, 236, .88)
 }
 
 .editor-preview-head {

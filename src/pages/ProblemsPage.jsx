@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import "./Problems.css";
+import "./ProblemsPage.css";
 
 const problemFolders = {
   Arrays: [
@@ -76,7 +76,7 @@ const levelOrder = {
   Hard: 3
 };
 
-export default function Problems({ onClose, onSelectProblem, completedProblemIds }) {
+export default function ProblemsPage({ onClose, onSelectProblem, completedProblemIds }) {
   const [levelFilter, setLevelFilter] = useState("All");
   const [folderFilter, setFolderFilter] = useState("Arrays");
   const folders = useMemo(() => Object.keys(problemFolders), []);
