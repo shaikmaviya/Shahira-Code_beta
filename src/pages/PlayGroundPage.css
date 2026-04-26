@@ -1,0 +1,88 @@
+body {
+  margin: 0;
+  background: #0a0a0a;
+  color: white;
+  font-family: monospace;
+}
+
+.root {
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.main {
+  display: flex;
+  gap: 20px;
+}
+
+.left {
+  flex: 2;
+}
+
+.right {
+  flex: 1;
+  background: #111;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.stage {
+  background: #111;
+  padding: 20px;
+  border-radius: 10px;
+  min-height: 120px;
+}
+
+.array {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cell {
+  background: #00e5ff;
+  color: black;
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+  min-width: 50px;
+}
+
+.index {
+  display: block;
+  font-size: 10px;
+}
+
+.controls {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+input {
+  padding: 8px;
+}
+
+button {
+  padding: 8px 12px;
+  cursor: pointer;
+  border: none;
+  background: #00e5ff;
+  color: black;
+  border-radius: 5px;
+}
+
+.empty {
+  color: gray;
+}

@@ -645,21 +645,18 @@ export async function executeArrayCode(code, runtime) {
       return "";
     }
 
+
+    // Improved: Always display print output, even if some arguments are unresolved
     const parts = splitPrintArgs(rawArgs)
       .map(parsePrintArgument)
       .map((part) => {
         if (part.type === "string") {
           return part.value;
         }
-
         const resolved = resolveScalarValue(runtime, part.value);
-        return resolved === undefined ? null : String(resolved);
+        // If unresolved, show the variable name as-is (like Python would print the repr)
+        return resolved === undefined ? part.value : String(resolved);
       });
-
-    if (parts.some((item) => item === null)) {
-      runtime.addLog("print(...) has unresolved value", "warn");
-      return "";
-    }
 
     const output = parts.join(" ");
     runtime.addLog(output, "ok");

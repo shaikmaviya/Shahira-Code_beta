@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, } from "react";
 import ProblemsPage from "../pages/ProblemsPage";
 import CodeEditor from "../components/editors/CodeEditor";
 import SimpleEditor from "../components/editors/SimpleEditor";
@@ -209,21 +209,97 @@ function normalizePath(pathname) {
   return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
 }
 
-export default function App() {
-  const [arr, setArr] = useState([12, 45, 7, 33, 21]);
-  const [states, setStates] = useState(["", "", "", "", ""]);
-  const [history, setHistory] = useState([]);
-  const [inputValue, setInputValue] = useState("");
-  const [activeTopic, setActiveTopic] = useState("Arrays");
-  const [arrayVarName, setArrayVarName] = useState("arr");
-  const [cx, setCx] = useState({ time: "O(1)", space: "O(n)" });
-  const [logs, setLogs] = useState([]);
-  const [executionOutput, setExecutionOutput] = useState({
+function createEmptyExecutionOutput() {
+  return {
     stdout: "",
     stderr: "",
     output: "",
     language: ""
-  });
+  };
+}
+
+async function runArrayVisualizerCode(rawCode, config) {
+  const {
+    runningRef,
+    arrRef,
+    scalarVarsRef,
+    setArr,
+    setStates,
+    setCx,
+    addLog,
+    setArrayVarName,
+    setHistory
+  } = config;
+
+  if (runningRef.current) {
+    return "";
+  }
+
+  const code = rawCode.trim();
+  if (!code) {
+    return "";
+  }
+
+  runningRef.current = true;
+
+  if (setHistory) {
+    setHistory((prev) => {
+      const next = [...prev, { code }];
+      return next.slice(-250);
+    });
+  }
+
+  let result = "";
+
+  try {
+    result = await executeArrayCode(code, {
+      getArr: () => arrRef.current,
+      setArr: (nextArr) => {
+        arrRef.current = nextArr;
+        setArr(nextArr);
+      },
+      getVar: (name) => scalarVarsRef.current[name],
+      hasVar: (name) => Object.prototype.hasOwnProperty.call(scalarVarsRef.current, name),
+      setVar: (name, value) => {
+        scalarVarsRef.current[name] = value;
+      },
+      setStates,
+      setCx,
+      addLog,
+      sleep,
+      setArrayVarName
+    });
+  } catch (error) {
+    addLog(`Error: ${error.message}`, "err");
+  } finally {
+    runningRef.current = false;
+  }
+
+  return result;
+}
+
+export default function App() {
+  const [landingArr, setLandingArr] = useState([12, 45, 7, 33, 21]);
+  const [landingStates, setLandingStates] = useState(["", "", "", "", ""]);
+  const [landingHistory, setLandingHistory] = useState([]);
+  const [landingInputValue, setLandingInputValue] = useState("");
+  const [activeTopic, setActiveTopic] = useState("Arrays");
+  const [landingArrayVarName, setLandingArrayVarName] = useState("arr");
+  const [landingCx, setLandingCx] = useState({ time: "O(1)", space: "O(n)" });
+  const [landingLogs, setLandingLogs] = useState([]);
+  const [editorInputValue, setEditorInputValue] = useState("");
+  const [editorArr, setEditorArr] = useState([]);
+  const [editorStates, setEditorStates] = useState([]);
+  const [editorArrayVarName, setEditorArrayVarName] = useState("arr");
+  const [editorCx, setEditorCx] = useState({ time: "O(1)", space: "O(n)" });
+  const [editorLogs, setEditorLogs] = useState([]);
+  const [editorExecutionOutput, setEditorExecutionOutput] = useState(createEmptyExecutionOutput);
+  const [simpleEditorInputValue, setSimpleEditorInputValue] = useState("");
+  const [simpleEditorArr, setSimpleEditorArr] = useState([]);
+  const [simpleEditorStates, setSimpleEditorStates] = useState([]);
+  const [simpleEditorArrayVarName, setSimpleEditorArrayVarName] = useState("arr");
+  const [simpleEditorLogs, setSimpleEditorLogs] = useState([]);
+  const [simpleEditorExecutionOutput, setSimpleEditorExecutionOutput] = useState(createEmptyExecutionOutput);
   const [particles, setParticles] = useState([]);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isSimpleEditorOpen, setIsSimpleEditorOpen] = useState(false);
@@ -245,9 +321,12 @@ export default function App() {
   const [authPage, setAuthPage] = useState("none");
   const [currentUser, setCurrentUser] = useState(null);
 
-  const runningRef = useRef(false);
-  const arrRef = useRef(arr);
-  const scalarVarsRef = useRef({});
+  const landingRunningRef = useRef(false);
+  const editorRunningRef = useRef(false);
+  const landingArrRef = useRef(landingArr);
+  const editorArrRef = useRef(editorArr);
+  const landingScalarVarsRef = useRef({});
+  const editorScalarVarsRef = useRef({});
   const inputRef = useRef(null);
   const logRef = useRef(null);
   const editorPanelRef = useRef(null);
@@ -293,12 +372,12 @@ export default function App() {
       { type: "comment", content: "Shahira Code React Live Editor" },
       { type: "comment", content: "Use any variable: nums, myArray, data..." },
       { type: "blank", content: "" },
-      { type: "code", content: `${arrayVarName} = []` },
+      { type: "code", content: `${landingArrayVarName} = []` },
       { type: "blank", content: "" }
     ],
-    [arrayVarName]
+    [landingArrayVarName]
   );
-  const nextLandingLineNumber = introEditorLines.length + history.length + 1;
+  const nextLandingLineNumber = introEditorLines.length + landingHistory.length + 1;
 
   const syncRouteState = useCallback((pathname) => {
     const normalizedPath = normalizePath(pathname);
@@ -332,32 +411,53 @@ export default function App() {
     syncRouteState(normalizedPath);
   }, [syncRouteState]);
 
-  function addLog(message, type = "ok") {
-    setLogs((prev) => {
+  function appendLog(setter, message, type = "ok") {
+    setter((prev) => {
       const next = [
         ...prev,
         { id: `${Date.now()}-${Math.random()}`, time: now(), type, message }
       ];
 
-      // Keep logs bounded so long sessions do not grow UI/memory without limit.
       return next.slice(-200);
     });
   }
 
-  function clearLogs() {
-    setLogs([]);
+  function addLandingLog(message, type = "ok") {
+    appendLog(setLandingLogs, message, type);
   }
 
-  function clearPreview() {
-    setArr([]);
-    setStates([]);
-    scalarVarsRef.current = {};
-    setExecutionOutput({
-      stdout: "",
-      stderr: "",
-      output: "",
-      language: ""
-    });
+  function addEditorLog(message, type = "ok") {
+    appendLog(setEditorLogs, message, type);
+  }
+
+  function addSimpleEditorLog(message, type = "ok") {
+    appendLog(setSimpleEditorLogs, message, type);
+  }
+
+  function clearLandingLogs() {
+    setLandingLogs([]);
+  }
+
+  function clearEditorLogs() {
+    setEditorLogs([]);
+  }
+
+  function clearSimpleEditorLogs() {
+    setSimpleEditorLogs([]);
+  }
+
+  function clearEditorPreview() {
+    setEditorArr([]);
+    setEditorStates([]);
+    editorArrRef.current = [];
+    editorScalarVarsRef.current = {};
+    setEditorExecutionOutput(createEmptyExecutionOutput());
+  }
+
+  function clearSimpleEditorPreview() {
+    setSimpleEditorArr([]);
+    setSimpleEditorStates([]);
+    setSimpleEditorExecutionOutput(createEmptyExecutionOutput());
   }
 
   useEffect(() => {
@@ -384,14 +484,18 @@ export default function App() {
     });
     setParticles(generated);
 
-    addLog("Shahira Code ready: animated DSA practice", "info");
-    addLog("Try: nums = [3,1,2], nums.sort(), nums.insert(1, 99)", "info");
+    addLandingLog("Shahira Code ready: animated DSA practice", "info");
+    addLandingLog("Try: nums = [3,1,2], nums.sort(), nums.insert(1, 99)", "info");
   }, []);
 
 
   useEffect(() => {
-    arrRef.current = arr;
-  }, [arr]);
+    landingArrRef.current = landingArr;
+  }, [landingArr]);
+
+  useEffect(() => {
+    editorArrRef.current = editorArr;
+  }, [editorArr]);
 
   useEffect(() => {
     try {
@@ -405,7 +509,7 @@ export default function App() {
     if (logRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, [landingLogs]);
 
   useEffect(() => {
     const isAuthOpen = authPage === "login" || authPage === "signup";
@@ -454,57 +558,38 @@ export default function App() {
     };
   }, [syncRouteState]);
 
-  async function runCode(rawCode) {
-    if (runningRef.current) {
-      return "";
-    }
-
-    const code = rawCode.trim();
-    if (!code) {
-      return "";
-    }
-
-    runningRef.current = true;
-    setHistory((prev) => {
-      const next = [...prev, { code }];
-
-      // Keep command history bounded for a stable editor height/performance.
-      return next.slice(-250);
+  function runLandingCode(rawCode) {
+    return runArrayVisualizerCode(rawCode, {
+      runningRef: landingRunningRef,
+      arrRef: landingArrRef,
+      scalarVarsRef: landingScalarVarsRef,
+      setArr: setLandingArr,
+      setStates: setLandingStates,
+      setCx: setLandingCx,
+      addLog: addLandingLog,
+      setArrayVarName: setLandingArrayVarName,
+      setHistory: setLandingHistory
     });
-    let result = "";
+  }
 
-    try {
-      result = await executeArrayCode(code, {
-        getArr: () => arrRef.current,
-        setArr: (nextArr) => {
-          arrRef.current = nextArr;
-          setArr(nextArr);
-        },
-        getVar: (name) => scalarVarsRef.current[name],
-        hasVar: (name) => Object.prototype.hasOwnProperty.call(scalarVarsRef.current, name),
-        setVar: (name, value) => {
-          scalarVarsRef.current[name] = value;
-        },
-        setStates,
-        setCx,
-        addLog,
-        sleep,
-        setArrayVarName
-      });
-    } catch (error) {
-      addLog(`Error: ${error.message}`, "err");
-    } finally {
-      runningRef.current = false;
-    }
-
-    return result;
+  function runEditorVisualizerCode(rawCode) {
+    return runArrayVisualizerCode(rawCode, {
+      runningRef: editorRunningRef,
+      arrRef: editorArrRef,
+      scalarVarsRef: editorScalarVarsRef,
+      setArr: setEditorArr,
+      setStates: setEditorStates,
+      setCx: setEditorCx,
+      addLog: addEditorLog,
+      setArrayVarName: setEditorArrayVarName
+    });
   }
 
   function onEnter(e) {
     if (e.key === "Enter") {
-      const value = inputValue;
-      setInputValue("");
-      runCode(value);
+      const value = landingInputValue;
+      setLandingInputValue("");
+      runLandingCode(value);
     }
   }
 
@@ -514,13 +599,15 @@ export default function App() {
       return;
     }
 
-    setInputValue("");
-    setArrayVarName("arr");
-    setArr([]);
-    setStates([]);
-    setSelectedProblem(null);
     setIsEditorOpen(false);
+    setSelectedProblem(null);
     setSimpleEditorLanguage("python");
+    setSimpleEditorInputValue("");
+    setSimpleEditorArrayVarName("arr");
+    setSimpleEditorArr([]);
+    setSimpleEditorStates([]);
+    setSimpleEditorLogs([]);
+    setSimpleEditorExecutionOutput(createEmptyExecutionOutput());
     setIsSimpleEditorOpen(true);
     setEditorGlow(true);
 
@@ -594,10 +681,15 @@ export default function App() {
     const extractedProblemArray = extractArrayFromCode(starterCode);
 
     setIsProblemsOpen(false);
-    setInputValue(starterCode);
-    setArrayVarName(extractedProblemArray?.name || "arr");
-    setArr(extractedProblemArray?.values || []);
-    setStates(Array.isArray(extractedProblemArray?.values) ? extractedProblemArray.values.map(() => "") : []);
+    setEditorInputValue(starterCode);
+    setEditorArrayVarName(extractedProblemArray?.name || "arr");
+    setEditorArr(extractedProblemArray?.values || []);
+    editorArrRef.current = extractedProblemArray?.values || [];
+    editorScalarVarsRef.current = {};
+    setEditorStates(Array.isArray(extractedProblemArray?.values) ? extractedProblemArray.values.map(() => "") : []);
+    setEditorCx({ time: "O(1)", space: "O(n)" });
+    setEditorLogs([]);
+    setEditorExecutionOutput(createEmptyExecutionOutput());
     setSelectedProblem(problem || null);
     setIsSimpleEditorOpen(false);
     setIsEditorOpen(true);
@@ -615,7 +707,7 @@ export default function App() {
 
       return [...prev, problemId];
     });
-    addLog(`Problem #${problemId} marked as completed`, "ok");
+    addEditorLog(`Problem #${problemId} marked as completed`, "ok");
 
     const resolvedProblem = selectedProblem
       && String(selectedProblem.id) === String(problemId)
@@ -661,7 +753,7 @@ export default function App() {
         input: resolvedProblem.input || "",
         output: resolvedProblem.output || "",
         status: "completed",
-        solutionCode: inputValue
+        solutionCode: editorInputValue
       });
 
       await upsertUserProgress(token, {
@@ -669,18 +761,18 @@ export default function App() {
         status: "completed"
       });
     } catch (error) {
-      addLog(error.message || "Unable to save problem progress.", "err");
+      addEditorLog(error.message || "Unable to save problem progress.", "err");
     }
   }
 
   async function runCurrentLineFromEditor(lineNumber) {
-    const lines = inputValue.split("\n");
+    const lines = editorInputValue.split("\n");
     const requestedIndex = typeof lineNumber === "number" ? lineNumber - 1 : lines.length - 1;
     const safeIndex = Math.min(Math.max(requestedIndex, 0), Math.max(lines.length - 1, 0));
     const latest = (lines[safeIndex] || "").trim();
     if (latest) {
-      const result = await runCode(latest);
-      setExecutionOutput({
+      const result = await runEditorVisualizerCode(latest);
+      setEditorExecutionOutput({
         stdout: isPrintStatement(latest) && result ? result : "",
         stderr: "",
         output: isPrintStatement(latest) && result ? result : "",
@@ -689,30 +781,23 @@ export default function App() {
       return result;
     }
 
-    setExecutionOutput({
-      stdout: "",
-      stderr: "",
-      output: "",
-      language: "visual"
-    });
+    setEditorExecutionOutput(createEmptyExecutionOutput());
 
     return "";
   }
 
   async function runAllFromEditor() {
-    const lines = inputValue
+    const lines = editorInputValue
       .split("\n")
       .map((line) => line.replace(/\r$/, ""))
       .filter((line) => line.trim().length > 0);
 
-    // Run-All should behave like a fresh script execution for scalar variables.
-    scalarVarsRef.current = {};
+    editorScalarVarsRef.current = {};
 
     let latestResult = "";
     const printOutputs = [];
     for (const line of lines) {
-      // Run each command in sequence so animations remain understandable.
-      const currentResult = await runCode(line);
+      const currentResult = await runEditorVisualizerCode(line);
       if (String(currentResult || "").trim()) {
         latestResult = currentResult;
       }
@@ -723,7 +808,7 @@ export default function App() {
     }
 
     const combinedPrintOutput = printOutputs.join("\n");
-    setExecutionOutput({
+    setEditorExecutionOutput({
       stdout: combinedPrintOutput,
       stderr: "",
       output: combinedPrintOutput,
@@ -734,21 +819,21 @@ export default function App() {
   }
 
   async function runSimpleEditorCode() {
-    const code = inputValue.trim();
+    const code = simpleEditorInputValue.trim();
     if (!code) {
       return;
     }
 
-    addLog(`Running ${simpleEditorLanguage} code...`, "info");
+    addSimpleEditorLog(`Running ${simpleEditorLanguage} code...`, "info");
 
     const parsedArray = extractArrayFromCode(code);
     if (parsedArray) {
-      setArrayVarName(parsedArray.name || "arr");
-      setArr(parsedArray.values);
+      setSimpleEditorArrayVarName(parsedArray.name || "arr");
+      setSimpleEditorArr(parsedArray.values);
       if (Array.isArray(parsedArray.values) && !Array.isArray(parsedArray.values[0])) {
-        setStates(parsedArray.values.map(() => ""));
+        setSimpleEditorStates(parsedArray.values.map(() => ""));
       } else {
-        setStates([]);
+        setSimpleEditorStates([]);
       }
     }
 
@@ -758,36 +843,36 @@ export default function App() {
       const stderr = result?.stderr || "";
       const output = result?.output || "";
 
-      setExecutionOutput({
+      setSimpleEditorExecutionOutput({
         stdout,
         stderr,
         output,
         language: simpleEditorLanguage
       });
       if (stdout) {
-        addLog(stdout, "ok");
+        addSimpleEditorLog(stdout, "ok");
       }
 
       if (stderr) {
-        addLog(stderr, "err");
+        addSimpleEditorLog(stderr, "err");
       }
 
       if (!stdout && !stderr && output) {
-        addLog(output, "ok");
+        addSimpleEditorLog(output, "ok");
       }
     } catch (error) {
-      setExecutionOutput({
+      setSimpleEditorExecutionOutput({
         stdout: "",
         stderr: error.message || "Execution error.",
         output: "",
         language: simpleEditorLanguage
       });
-      addLog(`Execution error: ${error.message}`, "err");
+      addSimpleEditorLog(`Execution error: ${error.message}`, "err");
     }
   }
 
   function runDemo() {
-    runCode("arr.sort()");
+    runLandingCode("arr.sort()");
   }
 
   function goToTopics(topic = "Sorting") {
@@ -805,8 +890,7 @@ export default function App() {
     }
 
     openEditor();
-    setInputValue(command);
-    runCode(command);
+    setSimpleEditorInputValue(command);
   }
 
   function openAuthLogin() {
@@ -820,13 +904,13 @@ export default function App() {
   function handleLoginSuccess(user) {
     setCurrentUser(user);
     navigateTo(ROUTE_PATHS.home);
-    addLog(`Welcome back, ${user.name}`, "ok");
+    addLandingLog(`Welcome back, ${user.name}`, "ok");
   }
 
   function handleSignupSuccess(user) {
     setCurrentUser(user);
     navigateTo(ROUTE_PATHS.home);
-    addLog(`Account created for ${user.name}`, "ok");
+    addLandingLog(`Account created for ${user.name}`, "ok");
   }
 
   function logout() {
@@ -844,7 +928,7 @@ export default function App() {
     setIsSimpleEditorOpen(false);
     setSelectedProblem(null);
     navigateTo(ROUTE_PATHS.home);
-    addLog("Logged out", "info");
+    addLandingLog("Logged out", "info");
   }
 
   async function handlePricingSignup(planName, price) {
@@ -860,9 +944,9 @@ export default function App() {
         price,
         currency: "INR"
       });
-      addLog(`Pricing signup saved: ${planName}`, "ok");
+      addLandingLog(`Pricing signup saved: ${planName}`, "ok");
     } catch (error) {
-      addLog(error.message || "Unable to save pricing signup.", "err");
+      addLandingLog(error.message || "Unable to save pricing signup.", "err");
     }
   }
 
@@ -978,20 +1062,20 @@ export default function App() {
           logRef={logRef}
           editorGlow={editorGlow}
           introEditorLines={introEditorLines}
-          history={history}
+          history={landingHistory}
           nextLandingLineNumber={nextLandingLineNumber}
           syntaxColor={syntaxColor}
-          inputValue={inputValue}
-          onInputChange={setInputValue}
+          inputValue={landingInputValue}
+          onInputChange={setLandingInputValue}
           onInputKeyDown={onEnter}
-          arr={arr}
-          states={states}
-          cx={cx}
-          logs={logs}
-          onClearLogs={clearLogs}
+          arr={landingArr}
+          states={landingStates}
+          cx={landingCx}
+          logs={landingLogs}
+          onClearLogs={clearLandingLogs}
           onOpenEditor={openEditor}
           onRunDemo={runDemo}
-          onRunQuickAction={runCode}
+          onRunQuickAction={runLandingCode}
           curatedProblems={curatedProblems}
           onRunProblemDemo={runProblemDemo}
           topicMarquee={topicMarquee}
@@ -1006,35 +1090,35 @@ export default function App() {
         onClose={closeEditor}
         selectedProblem={selectedProblem}
         onProblemCompleted={markProblemAsCompleted}
-        inputValue={inputValue}
-        onInputChange={setInputValue}
+        inputValue={editorInputValue}
+        onInputChange={setEditorInputValue}
         onRunCurrentLine={runCurrentLineFromEditor}
         onRunAll={runAllFromEditor}
-        arr={arr}
-        states={states}
-        cx={cx}
-        arrayVarName={arrayVarName}
-        logs={logs}
-        onClearLogs={clearLogs}
-        onClearPreview={clearPreview}
-        executionOutput={executionOutput}
+        arr={editorArr}
+        states={editorStates}
+        cx={editorCx}
+        arrayVarName={editorArrayVarName}
+        logs={editorLogs}
+        onClearLogs={clearEditorLogs}
+        onClearPreview={clearEditorPreview}
+        executionOutput={editorExecutionOutput}
       />
 
       <SimpleEditor
         isOpen={isSimpleEditorOpen}
         onClose={closeSimpleEditor}
-        inputValue={inputValue}
-        onInputChange={setInputValue}
+        inputValue={simpleEditorInputValue}
+        onInputChange={setSimpleEditorInputValue}
         onRunAll={runSimpleEditorCode}
         activeLanguage={simpleEditorLanguage}
         onLanguageChange={setSimpleEditorLanguage}
-        arr={arr}
-        states={states}
-        arrayVarName={arrayVarName}
-        logs={logs}
-        onClearLogs={clearLogs}
-        onClearPreview={clearPreview}
-        executionOutput={executionOutput}
+        arr={simpleEditorArr}
+        states={simpleEditorStates}
+        arrayVarName={simpleEditorArrayVarName}
+        logs={simpleEditorLogs}
+        onClearLogs={clearSimpleEditorLogs}
+        onClearPreview={clearSimpleEditorPreview}
+        executionOutput={simpleEditorExecutionOutput}
       />
 
       {authPage === "login" && (

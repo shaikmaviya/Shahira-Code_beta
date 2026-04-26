@@ -111,10 +111,6 @@ export default function ContactPage({ onBack }) {
 </div>
 
       </div>
-
-      <div className="ctabtns contact-actions">
-        <button className="bg" onClick={onBack}>Go Back</button>
-      </div>
     </section>
   );
 }

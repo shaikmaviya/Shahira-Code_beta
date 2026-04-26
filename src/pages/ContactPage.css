@@ -1,10 +1,14 @@
 .contact-page {
   max-width: 1180px;
   margin: 28px auto;
-  padding: 0 16px;
+  padding-top: 0 !important;  
 }
 
+.sec.contact-page {
+  margin-top: 1rem;
+}
 .contact-layout {
+  
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.4rem;
