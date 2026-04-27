@@ -147,7 +147,8 @@ export default function SimpleEditor({
 
   const placeholderText =
     language === "java"
-      ? "Type your Java code...\n\nExample:\nint[] nums = {2, 7, 11, 15};\nSystem.out.println(nums[0] + nums[1]);"
+
+      ? "Type your Java code...\n\n(Note: class is already created)\n\nExample:\nint[] nums = {2, 7, 11, 15};\nSystem.out.println(nums[0] + nums[1]);"
       : "Type your Python code...\n\nExample:\nnums = [2, 7, 11, 15]\nprint(nums[0] + nums[1])";
 
   if (isMinimized) {

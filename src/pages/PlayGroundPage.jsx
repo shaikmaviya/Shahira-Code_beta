@@ -1,106 +1,67 @@
-import React, { useState } from "react";
+import { useMemo, useState } from "react";
 import "./PlayGroundPage.css";
 
-function OpenPLayGroundPage() {
-  const [arr, setArr] = useState([]);
-  const [value, setValue] = useState("");
+export default function PlayGroundPage() {
+  const [activeTool, setActiveTool] = useState(null);
 
-  // PUSH
-  const opPush = () => {
-    if (value === "") return;
-    setArr([...arr, Number(value)]);
-    setValue("");
-  };
+  const playgroundCards = useMemo(
+    () => [
+      {
+        id: "array-visualizer",
+        title: "Array Visualizer",
+        subtitle: "1D + 2D interactive DSA playground",
+        url: "/playground-visualizer.html",
+        badge: "Arrays"
+      }
+    ],
+    []
+  );
 
-  // POP
-  const opPop = () => {
-    if (arr.length === 0) return;
-    setArr(arr.slice(0, -1));
-  };c
+  const selectedCard = playgroundCards.find((card) => card.id === activeTool) || null;
 
-  // RANDOM ARRAY
-  const opRandom = () => {
-    const randomArr = Array.from({ length: 8 }, () =>
-      Math.floor(Math.random() * 90) + 10
+  if (selectedCard) {
+    return (
+      <section className="playground-page">
+        <div className="viewer-header">
+          <button type="button" className="viewer-btn" onClick={() => setActiveTool(null)}>
+            Back To Playground
+          </button>
+          <h2>{selectedCard.title}</h2>
+          <a className="viewer-btn secondary" href={selectedCard.url} target="_blank" rel="noreferrer">
+            Open In New Tab
+          </a>
+        </div>
+
+        <iframe className="playground-frame" title={selectedCard.title} src={selectedCard.url} />
+      </section>
     );
-    setArr(randomArr);
-  };
-
-  // CLEAR
-  const opClear = () => {
-    setArr([]);
-  };
+  }
 
   return (
-    <div className="root">
-
-      {/* Header */}
-      <header className="header">
-        <h1>DSA Array Visualizer</h1>
-      </header>
-
-      {/* Stats */}
-      <div className="stats">
-        <div>Length: {arr.length}</div>
-        <div>Array: [{arr.join(", ")}]</div>
+    <section className="playground-page">
+      <div className="launcher-head">
+        <h2>Playground</h2>
+        <p>Click a big card to open that visualizer.</p>
       </div>
 
-      {/* Main */}
-      <div className="main">
-
-        {/* LEFT SIDE */}
-        <div className="left">
-
-          {/* Array Display */}
-          <div className="stage">
-            {arr.length === 0 ? (
-              <p className="empty">Array is empty</p>
-            ) : (
-              <div className="array">
-                {arr.map((num, i) => (
-                  <div key={i} className="cell">
-                    {num}
-                    <span className="index">[{i}]</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Controls */}
-          <div className="controls">
-
-            <input
-              type="number"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder="Enter value"
-            />
-
-            <button onClick={opPush}>Push</button>
-            <button onClick={opPop}>Pop</button>
-            <button onClick={opRandom}>Random</button>
-            <button onClick={opClear}>Clear</button>
-
-          </div>
-
-        </div>
-
-        {/* RIGHT SIDE (Code Panel placeholder) */}
-        <div className="right">
-          <h3>Live Code</h3>
-          <pre>
-{`// Example Push
-arr.push(value);
-
-// Example Pop
-arr.pop();`}
-          </pre>
-        </div>
-
+      <div className="playground-grid">
+        {playgroundCards.map((card) => (
+          <button
+            key={card.id}
+            type="button"
+            className="playground-card"
+            onClick={() => setActiveTool(card.id)}
+          >
+            <div className="card-thumb">
+              <span className="card-badge">{card.badge}</span>
+            </div>
+            <div className="card-meta">
+              <h3>{card.title}</h3>
+              <p>{card.subtitle}</p>
+            </div>
+          </button>
+        ))}
       </div>
-    </div>
+    </section>
   );
 }
-
-export default OpenPLayGroundPage;

@@ -65,7 +65,7 @@ export default function PricingPage({ onBack, onStartFree, onGetSimple, onGetAdv
     <ul className="pricing-list">
       <li>Everything in Simple</li>
       <li>Interview-ready problem sets</li>
-      <li>Mock interview simulator</li>
+      <li>PlayGround access</li>
       <li>Company-wise filter (FAANG+)</li>
       <li>1-on-1 doubt sessions (2/mo)</li>
       <li>Resume & GitHub review</li>

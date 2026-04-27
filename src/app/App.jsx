@@ -6,6 +6,7 @@ import ProfilePage from "../pages/ProfilePage";
 import ContactPage from "../pages/ContactPage";
 import PricingPage from "../pages/PricingPage";
 import HomePage from "../pages/HomePage";
+import PlayGroundPage from "../pages/PlayGroundPage";
 import Login from "../features/auth/Login";
 import Signup from "../features/auth/Signup";
 import { logoutUser } from "../features/auth/authApi";
@@ -133,33 +134,6 @@ function extractArrayFromCode(code) {
   return null;
 }
 
-function extractAssignmentFromProblemInput(problemInput) {
-  if (!problemInput) {
-    return null;
-  }
-
-  const match = String(problemInput).match(/([A-Za-z_$][\w$]*)\s*=\s*\[[^\]]*\]/);
-  return match ? match[0] : null;
-}
-
-function buildProblemStarterCode(problem) {
-  if (!problem) {
-    return "";
-  }
-
-  const assignment = extractAssignmentFromProblemInput(problem.input || "");
-  const variableNameMatch = assignment?.match(/^([A-Za-z_$][\w$]*)\s*=/);
-  const variableName = variableNameMatch ? variableNameMatch[1] : "arr";
-  const starterCommand = (problem.starterCommand || "").replace(/\barr\b/g, variableName);
-
-  return [assignment, starterCommand].filter(Boolean).join("\n");
-}
-
-function isPrintStatement(code) {
-  const normalized = String(code || "").trim();
-  return /^(?:print|System\.out\.println)\s*\(.*\)\s*;?\s*$/.test(normalized);
-}
-
 const curatedProblems = [
   {
     title: "Two Sum",
@@ -196,6 +170,7 @@ const ROUTE_PATHS = {
   problems: "/problems",
   profile: "/profile",
   pricing: "/pricing",
+  playground: "/playground",
   contact: "/contact",
   login: "/login",
   signup: "/signup"
@@ -307,6 +282,7 @@ export default function App() {
   const [isProblemsOpen, setIsProblemsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
+  const [isPlaygroundOpen, setIsPlaygroundOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState(null);
   const [completedProblemIds, setCompletedProblemIds] = useState(() => {
@@ -391,6 +367,7 @@ export default function App() {
     setIsProblemsOpen(resolvedPath === ROUTE_PATHS.problems);
     setIsProfileOpen(resolvedPath === ROUTE_PATHS.profile);
     setIsPricingOpen(resolvedPath === ROUTE_PATHS.pricing);
+    setIsPlaygroundOpen(resolvedPath === ROUTE_PATHS.playground);
     setIsContactOpen(resolvedPath === ROUTE_PATHS.contact);
     setAuthPage(
       resolvedPath === ROUTE_PATHS.login
@@ -657,6 +634,13 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function openPlaygroundPage() {
+    setIsEditorOpen(false);
+    setIsSimpleEditorOpen(false);
+    navigateTo(ROUTE_PATHS.playground);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function openContactPage(event) {
     if (event?.preventDefault) {
       event.preventDefault();
@@ -677,11 +661,10 @@ export default function App() {
   }
 
   function openProblemInEditor(problem) {
-    const starterCode = buildProblemStarterCode(problem);
-    const extractedProblemArray = extractArrayFromCode(starterCode);
+    const extractedProblemArray = extractArrayFromCode(problem?.input || "");
 
     setIsProblemsOpen(false);
-    setEditorInputValue(starterCode);
+    setEditorInputValue("");
     setEditorArrayVarName(extractedProblemArray?.name || "arr");
     setEditorArr(extractedProblemArray?.values || []);
     editorArrRef.current = extractedProblemArray?.values || [];
@@ -772,10 +755,11 @@ export default function App() {
     const latest = (lines[safeIndex] || "").trim();
     if (latest) {
       const result = await runEditorVisualizerCode(latest);
+      const outputText = String(result || "").trim();
       setEditorExecutionOutput({
-        stdout: isPrintStatement(latest) && result ? result : "",
+        stdout: outputText,
         stderr: "",
-        output: isPrintStatement(latest) && result ? result : "",
+        output: outputText,
         language: "visual"
       });
       return result;
@@ -796,22 +780,23 @@ export default function App() {
 
     let latestResult = "";
     const printOutputs = [];
+    const printPattern = /^(?:print|System\.out\.println)\s*\(.*\)\s*;?\s*$/;
     for (const line of lines) {
       const currentResult = await runEditorVisualizerCode(line);
-      if (String(currentResult || "").trim()) {
-        latestResult = currentResult;
+      const normalizedResult = String(currentResult || "").trim();
+      if (normalizedResult) {
+        latestResult = normalizedResult;
       }
 
-      if (isPrintStatement(line) && String(currentResult || "").trim()) {
-        printOutputs.push(String(currentResult).trim());
+      if (printPattern.test(line.trim()) && normalizedResult) {
+        printOutputs.push(normalizedResult);
       }
     }
-
-    const combinedPrintOutput = printOutputs.join("\n");
+    const outputText = printOutputs.length ? printOutputs.join("\n") : latestResult;
     setEditorExecutionOutput({
-      stdout: combinedPrintOutput,
+      stdout: outputText,
       stderr: "",
-      output: combinedPrintOutput,
+      output: outputText,
       language: "visual"
     });
 
@@ -991,6 +976,7 @@ export default function App() {
             <li><a href={`${ROUTE_PATHS.home}#topics`} onClick={goHome}>Topics</a></li>
             <li><button type="button" className="nav-link-btn" onClick={openProblemsPage}>Problems</button></li>
             <li><button type="button" className="nav-link-btn" onClick={openPricingPage}>Pricing</button></li>
+            <li><button type="button" className="nav-link-btn" onClick={openPlaygroundPage}>Playground</button></li>
             <li><button type="button" className="nav-link-btn" onClick={openContactPage}>Contact</button></li>
           </ul>
         </div>
@@ -1051,11 +1037,15 @@ export default function App() {
         />
       )}
 
+      {isPlaygroundOpen && (
+        <PlayGroundPage />
+      )}
+
       {isContactOpen && (
         <ContactPage onBack={goHome} />
       )}
 
-      {!isPricingOpen && !isProfileOpen && !isProblemsOpen && !isContactOpen && authPage === "none" && (
+      {!isPricingOpen && !isProfileOpen && !isProblemsOpen && !isPlaygroundOpen && !isContactOpen && authPage === "none" && (
         <HomePage
           inputRef={inputRef}
           editorPanelRef={editorPanelRef}

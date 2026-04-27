@@ -415,7 +415,7 @@ export default function CodeEditor({
                 onChange={(e) => onInputChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onScroll={handleInputScroll}
-                placeholder={"Type your code...\n\nExamples:\nnums = [2,7,11,15]\nnums.unshift(5)\nnums.set(1, 99)\nnums.get(2)\nnums.sum(9)\nnums.length()"}
+                placeholder="Type your code..."
               />
             </div>
 

@@ -433,11 +433,24 @@ async function execIndexLoop(runtime, iteratorName, start, operator, boundOffset
   let index = start;
 
   runtime.setCx({ time: "O(n)", space: "O(1)" });
-  runtime.addLog(`for-loop start (${iteratorName})`, "info");
+  runtime.addLog(
+    `for-loop start: ${iteratorName}=${start}; condition ${iteratorName} ${operator} ${bound}; step ${step}`,
+    "info"
+  );
   runtime.setStates(initialArr.map(() => ""));
   await runtime.sleep(100);
 
-  while (evaluateCondition(index, operator, bound)) {
+  while (true) {
+    const conditionResult = evaluateCondition(index, operator, bound);
+    runtime.addLog(
+      `condition check -> ${iteratorName} ${operator} ${bound} is ${conditionResult ? "true" : "false"}`,
+      conditionResult ? "info" : "warn"
+    );
+
+    if (!conditionResult) {
+      break;
+    }
+
     const currentArr = runtime.getArr();
     if (iterations > currentArr.length * 4 + 20) {
       runtime.addLog("Loop stopped (safety limit reached)", "err");
@@ -449,12 +462,16 @@ async function execIndexLoop(runtime, iteratorName, start, operator, boundOffset
     runtime.setStates(currentArr.map((_, i) => (i === index ? "active" : "")));
 
     if (inRange) {
-      runtime.addLog(`${iteratorName}=${index}, value=${currentArr[index]}`, "info");
+      runtime.addLog(
+        `iteration ${iterations + 1}: ${iteratorName}=${index}, value=${currentArr[index]}`,
+        "info"
+      );
     } else {
-      runtime.addLog(`${iteratorName}=${index} (out of bounds)`, "warn");
+      runtime.addLog(`iteration ${iterations + 1}: ${iteratorName}=${index} (out of bounds)`, "warn");
     }
 
     await runtime.sleep(280);
+    runtime.addLog(`${iteratorName} moves by ${step} -> next ${iteratorName}=${index + step}`, "info");
     index += step;
     iterations += 1;
   }
@@ -493,7 +510,7 @@ async function execForOfLoop(runtime, valueName) {
         runtime.addLog(`${value} > ${maxValue} -> no change`, "info");
       }
     } else {
-      runtime.addLog(`${valueName}=${currentArr[i]} at index ${i}`, "info");
+      runtime.addLog(`iteration ${i + 1}: ${valueName}=${currentArr[i]} at index ${i}`, "info");
     }
 
     await runtime.sleep(280);
