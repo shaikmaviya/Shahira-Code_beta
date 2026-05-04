@@ -1,8 +1,12 @@
 # Shahira Code
 
+<p align="center">
+	<img src="public/logo.png" alt="Shahira Code logo" width="140" />
+</p>
+
 Shahira Code is a visual DSA learning platform that turns code into live animations. Students can type array operations, run curated problems, inspect time and space complexity, and track practice progress through a React frontend backed by a Spring Boot API.
 
-![Shahira Code homepage preview](docs/images/shahira-code-preview.svg)
+![Shahira Code preview](docs/images/homepage.png)
 
 ## About The Project
 
@@ -26,7 +30,7 @@ The app includes a landing playground, a full editor experience, problem sets, p
 
 ### Home Page
 
-![Home page visual editor](docs/images/shahira-code-preview.svg)
+![Home page preview](docs/images/homepage.png)
 
 The home page highlights the main idea: type code, watch the data structure move, and learn the operation visually.
 
