@@ -69,6 +69,9 @@ public class UserProfileController {
     }
 
     private UserProfileDto toProfileDto(UserEntity user) {
-        return new UserProfileDto(user.getName(), user.getEmail(), user.getAvatarUrl(), user.getBio());
+        String activePlan = user.getActivePlan() == null || user.getActivePlan().isBlank()
+            ? "free"
+            : user.getActivePlan().trim().toLowerCase();
+        return new UserProfileDto(user.getName(), user.getEmail(), user.getAvatarUrl(), user.getBio(), activePlan);
     }
 }

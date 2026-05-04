@@ -1,4 +1,6 @@
+
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+@import './syntax-highlight.css';
 
 * {
   box-sizing: border-box;
@@ -264,6 +266,26 @@ nav {
   font-size: .78rem;
   color: var(--muted);
   font-family: var(--mono)
+}
+
+.plan-chip {
+  border: 1px solid rgba(0, 212, 255, .35);
+  background: rgba(0, 212, 255, .1);
+  color: var(--b);
+  border-radius: 999px;
+  padding: .22rem .58rem;
+  font-family: var(--mono);
+  font-size: .68rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: border-color .2s, color .2s, transform .15s
+}
+
+.plan-chip:hover {
+  border-color: var(--g);
+  color: var(--g);
+  transform: translateY(-1px)
 }
 
 /* ── HERO ── */
@@ -608,6 +630,15 @@ h1 .hl {
 .small-btn {
   padding: .45rem .75rem;
   font-size: .76rem
+}
+
+.route-loading {
+  min-height: 45vh;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: .9rem
 }
 
 .google-btn {

@@ -1,4 +1,4 @@
 package com.example.codeviz.auth;
 
-public record AuthUser(String name, String email) {
+public record AuthUser(String name, String email, String activePlan) {
 }

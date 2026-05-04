@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState, } from "react";
-import ProblemsPage from "../pages/ProblemsPage";
-import CodeEditor from "../components/editors/CodeEditor";
-import SimpleEditor from "../components/editors/SimpleEditor";
-import ProfilePage from "../pages/ProfilePage";
-import ContactPage from "../pages/ContactPage";
-import PricingPage from "../pages/PricingPage";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, } from "react";
 import HomePage from "../pages/HomePage";
-import PlayGroundPage from "../pages/PlayGroundPage";
-import Login from "../features/auth/Login";
-import Signup from "../features/auth/Signup";
 import { logoutUser } from "../features/auth/authApi";
 import { createPricingSignup, saveUserProblem, upsertUserProgress } from "../services/profileApi";
 import { executeArrayCode } from "../features/arrays/executeArrayCode";
 import { executeCode } from "../services/editorApi";
+
+const ProblemsPage = lazy(() => import("../pages/ProblemsPage"));
+const CodeEditor = lazy(() => import("../components/editors/CodeEditor"));
+const SimpleEditor = lazy(() => import("../components/editors/SimpleEditor"));
+const ProfilePage = lazy(() => import("../pages/ProfilePage"));
+const ContactPage = lazy(() => import("../pages/ContactPage"));
+const PricingPage = lazy(() => import("../pages/PricingPage"));
+const PlayGroundPage = lazy(() => import("../pages/PlayGroundPage"));
+const Login = lazy(() => import("../features/auth/Login"));
+const Signup = lazy(() => import("../features/auth/Signup"));
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -27,8 +28,17 @@ function now() {
   });
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function syntaxColor(code) {
-  return code
+  return escapeHtml(code)
     .replace(/\b([A-Za-z_$][\w$]*)\b(?=\s*\.)/g, '<span class="kw">$1</span>')
     .replace(
       /\.(push|append|add|pop|shift|unshift|sort|search|find|insert|set|get|remove|delete|removeat|reverse|index|sum|length|size|clear|min|max)\b/g,
@@ -176,6 +186,42 @@ const ROUTE_PATHS = {
   signup: "/signup"
 };
 
+const PLAN_RANK = {
+  free: 0,
+  pro: 1,
+  advanced: 2
+};
+
+function normalizePlan(plan) {
+  const normalized = String(plan || "free").trim().toLowerCase();
+  if (normalized === "simple") {
+    return "pro";
+  }
+
+  if (normalized === "advance") {
+    return "advanced";
+  }
+
+  return PLAN_RANK[normalized] === undefined ? "free" : normalized;
+}
+
+function hasPlanAccess(currentPlan, requiredPlan) {
+  return PLAN_RANK[normalizePlan(currentPlan)] >= PLAN_RANK[requiredPlan];
+}
+
+function getPlanLabel(plan) {
+  const normalizedPlan = normalizePlan(plan);
+  if (normalizedPlan === "advanced") {
+    return "Advanced";
+  }
+
+  if (normalizedPlan === "pro") {
+    return "Pro";
+  }
+
+  return "Free";
+}
+
 function normalizePath(pathname) {
   if (!pathname || pathname === "/") {
     return "/";
@@ -191,6 +237,14 @@ function createEmptyExecutionOutput() {
     output: "",
     language: ""
   };
+}
+
+function LoadingView() {
+  return (
+    <section className="sec route-loading" aria-live="polite">
+      Loading...
+    </section>
+  );
 }
 
 async function runArrayVisualizerCode(rawCode, config) {
@@ -296,6 +350,12 @@ export default function App() {
   });
   const [authPage, setAuthPage] = useState("none");
   const [currentUser, setCurrentUser] = useState(null);
+  const [pricingStatus, setPricingStatus] = useState({
+    pendingPlan: "",
+    message: "",
+    type: "info"
+  });
+  const activePlan = normalizePlan(currentUser?.activePlan);
 
   const landingRunningRef = useRef(false);
   const editorRunningRef = useRef(false);
@@ -441,7 +501,11 @@ export default function App() {
     const existingSession = localStorage.getItem("codeviz_user");
     if (existingSession) {
       try {
-        setCurrentUser(JSON.parse(existingSession));
+        const parsedUser = JSON.parse(existingSession);
+        setCurrentUser({
+          ...parsedUser,
+          activePlan: normalizePlan(parsedUser?.activePlan)
+        });
       } catch {
         localStorage.removeItem("codeviz_user");
       }
@@ -607,6 +671,18 @@ export default function App() {
       event.preventDefault();
     }
 
+    if (!currentUser) {
+      navigateTo(ROUTE_PATHS.login);
+      return;
+    }
+
+    // Only allow 'pro' or 'advanced' users
+    if (!hasPlanAccess(activePlan, "pro")) {
+      openPricingPage();
+      addLandingLog("Upgrade to Pro to access practice problems.", "warn");
+      return;
+    }
+
     setIsEditorOpen(false);
     setIsSimpleEditorOpen(false);
     navigateTo(ROUTE_PATHS.problems);
@@ -635,6 +711,19 @@ export default function App() {
   }
 
   function openPlaygroundPage() {
+    if (!currentUser) {
+      navigateTo(ROUTE_PATHS.login);
+      return;
+    }
+
+
+    // Only allow 'advanced' users
+    if (!hasPlanAccess(activePlan, "advanced")) {
+      openPricingPage();
+      addLandingLog("Upgrade to Advanced to access the Playground.", "warn");
+      return;
+    }
+
     setIsEditorOpen(false);
     setIsSimpleEditorOpen(false);
     navigateTo(ROUTE_PATHS.playground);
@@ -661,6 +750,12 @@ export default function App() {
   }
 
   function openProblemInEditor(problem) {
+    if (!hasPlanAccess(activePlan, "pro")) {
+      openPricingPage();
+      addLandingLog("Upgrade to Pro to open practice problems.", "warn");
+      return;
+    }
+
     const extractedProblemArray = extractArrayFromCode(problem?.input || "");
 
     setIsProblemsOpen(false);
@@ -886,15 +981,99 @@ export default function App() {
     navigateTo(ROUTE_PATHS.home);
   }
 
+  async function activatePricingPlan(planName, price, token, baseUser = currentUser) {
+    const nextPlan = normalizePlan(planName);
+    const planLabel = getPlanLabel(nextPlan);
+    const updatedUser = {
+      ...(baseUser || {}),
+      activePlan: nextPlan
+    };
+
+    setPricingStatus({
+      pendingPlan: nextPlan,
+      message: `Activating ${planLabel} plan...`,
+      type: "info"
+    });
+
+    setCurrentUser(updatedUser);
+    localStorage.setItem("codeviz_user", JSON.stringify(updatedUser));
+    setPricingStatus({
+      pendingPlan: "",
+      message: `${planLabel} plan activated. You can use your new access now.`,
+      type: "success"
+    });
+    addLandingLog(`${planLabel} plan activated.`, "ok");
+
+    try {
+      await createPricingSignup(token, {
+        planName,
+        price,
+        currency: "INR"
+      });
+    } catch (error) {
+      setPricingStatus({
+        pendingPlan: "",
+        message: `${planLabel} is active in this browser, but server sync failed: ${error.message || "please try again later."}`,
+        type: "error"
+      });
+      addLandingLog(error.message || "Unable to sync pricing signup.", "err");
+    }
+
+    return updatedUser;
+  }
+
+  async function activatePendingPricingPlan(user) {
+    const token = localStorage.getItem("codeviz_token");
+    const rawPendingPlan = localStorage.getItem("codeviz_pending_plan");
+    if (!token || !rawPendingPlan) {
+      return false;
+    }
+
+    try {
+      const pendingPlan = JSON.parse(rawPendingPlan);
+      localStorage.removeItem("codeviz_pending_plan");
+      navigateTo(ROUTE_PATHS.pricing);
+      await activatePricingPlan(pendingPlan.planName, pendingPlan.price, token, user);
+      return true;
+    } catch (error) {
+      localStorage.removeItem("codeviz_pending_plan");
+      setPricingStatus({
+        pendingPlan: "",
+        message: error.message || "Unable to activate your selected plan after login.",
+        type: "error"
+      });
+      navigateTo(ROUTE_PATHS.pricing);
+      return true;
+    }
+  }
+
   function handleLoginSuccess(user) {
-    setCurrentUser(user);
-    navigateTo(ROUTE_PATHS.home);
+    const normalizedUser = {
+      ...user,
+      activePlan: normalizePlan(user?.activePlan)
+    };
+    setCurrentUser(normalizedUser);
+    localStorage.setItem("codeviz_user", JSON.stringify(normalizedUser));
+    activatePendingPricingPlan(normalizedUser).then((handledPendingPlan) => {
+      if (!handledPendingPlan) {
+        navigateTo(ROUTE_PATHS.home);
+      }
+    });
     addLandingLog(`Welcome back, ${user.name}`, "ok");
   }
 
   function handleSignupSuccess(user) {
-    setCurrentUser(user);
-    navigateTo(ROUTE_PATHS.home);
+    const normalizedUser = {
+      ...user,
+      activePlan: normalizePlan(user?.activePlan)
+    };
+    setCurrentUser(normalizedUser);
+    localStorage.setItem("codeviz_user", JSON.stringify(normalizedUser));
+    activatePendingPricingPlan(normalizedUser).then((handledPendingPlan) => {
+      if (!handledPendingPlan) {
+        navigateTo(ROUTE_PATHS.home);
+      }
+    });
     addLandingLog(`Account created for ${user.name}`, "ok");
   }
 
@@ -917,20 +1096,28 @@ export default function App() {
   }
 
   async function handlePricingSignup(planName, price) {
+    const nextPlan = normalizePlan(planName);
+    const planLabel = getPlanLabel(nextPlan);
     const token = localStorage.getItem("codeviz_token");
     if (!token) {
+      localStorage.setItem("codeviz_pending_plan", JSON.stringify({ planName, price }));
+      setPricingStatus({
+        pendingPlan: "",
+        message: `Login first and I will activate ${planLabel} automatically.`,
+        type: "error"
+      });
       navigateTo(ROUTE_PATHS.login);
       return;
     }
 
     try {
-      await createPricingSignup(token, {
-        planName,
-        price,
-        currency: "INR"
-      });
-      addLandingLog(`Pricing signup saved: ${planName}`, "ok");
+      await activatePricingPlan(planName, price, token);
     } catch (error) {
+      setPricingStatus({
+        pendingPlan: "",
+        message: error.message || "Unable to activate this plan right now.",
+        type: "error"
+      });
       addLandingLog(error.message || "Unable to save pricing signup.", "err");
     }
   }
@@ -954,6 +1141,7 @@ export default function App() {
         ))}
       </div>
 
+      <Suspense fallback={<LoadingView />}>
       <nav data-reveal>
         <div className="nav-left">
           <div className="logo" onClick={goHome} style={{ cursor: "pointer" }}>
@@ -974,15 +1162,49 @@ export default function App() {
               </a>
             </li>
             <li><a href={`${ROUTE_PATHS.home}#topics`} onClick={goHome}>Topics</a></li>
-            <li><button type="button" className="nav-link-btn" onClick={openProblemsPage}>Problems</button></li>
+            <li>
+              <button type="button" className="nav-link-btn" onClick={openProblemsPage}>
+                Problems
+                {(!currentUser || !hasPlanAccess(activePlan, "pro")) && (
+                  <svg
+                    style={{ marginLeft: 6, verticalAlign: "middle" }}
+                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  >
+                    <rect x="3" y="11" width="18" height="10" rx="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                )}
+              </button>
+            </li>
             <li><button type="button" className="nav-link-btn" onClick={openPricingPage}>Pricing</button></li>
-            <li><button type="button" className="nav-link-btn" onClick={openPlaygroundPage}>Playground</button></li>
+            <li>
+              <button type="button" className="nav-link-btn" onClick={openPlaygroundPage}>
+                Playground
+                {(!currentUser || !hasPlanAccess(activePlan, "advanced")) && (
+                  <svg
+                    style={{ marginLeft: 6, verticalAlign: "middle" }}
+                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  >
+                    <rect x="3" y="11" width="18" height="10" rx="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                )}
+              </button>
+            </li>
             <li><button type="button" className="nav-link-btn" onClick={openContactPage}>Contact</button></li>
           </ul>
         </div>
         <div className="nav-right">
           {currentUser ? (
             <div className="nav-auth">
+              <button
+                type="button"
+                className="plan-chip"
+                onClick={openPricingPage}
+                title="Manage plan"
+              >
+                {activePlan === "advanced" ? "Advanced" : activePlan === "pro" ? "Pro" : "Free"}
+              </button>
               <span className="nav-user">{currentUser.name}</span>
               <button
                 type="button"
@@ -1023,9 +1245,13 @@ export default function App() {
       {isPricingOpen && (
         <PricingPage
           onBack={goHome}
+          currentPlan={activePlan}
+          pendingPlan={pricingStatus.pendingPlan}
+          pricingMessage={pricingStatus.message}
+          pricingMessageType={pricingStatus.type}
           onStartFree={() => handlePricingSignup("Free", 0)}
-          onGetSimple={() => handlePricingSignup("Simple", 99)}
-          onGetAdvance={() => handlePricingSignup("Advance", 199)}
+          onGetPro={() => handlePricingSignup("Pro", 99)}
+          onGetAdvanced={() => handlePricingSignup("Advanced", 199)}
         />
       )}
 
@@ -1075,41 +1301,45 @@ export default function App() {
         />
       )}
 
-      <CodeEditor
-        isOpen={isEditorOpen}
-        onClose={closeEditor}
-        selectedProblem={selectedProblem}
-        onProblemCompleted={markProblemAsCompleted}
-        inputValue={editorInputValue}
-        onInputChange={setEditorInputValue}
-        onRunCurrentLine={runCurrentLineFromEditor}
-        onRunAll={runAllFromEditor}
-        arr={editorArr}
-        states={editorStates}
-        cx={editorCx}
-        arrayVarName={editorArrayVarName}
-        logs={editorLogs}
-        onClearLogs={clearEditorLogs}
-        onClearPreview={clearEditorPreview}
-        executionOutput={editorExecutionOutput}
-      />
+      {isEditorOpen && (
+        <CodeEditor
+          isOpen={isEditorOpen}
+          onClose={closeEditor}
+          selectedProblem={selectedProblem}
+          onProblemCompleted={markProblemAsCompleted}
+          inputValue={editorInputValue}
+          onInputChange={setEditorInputValue}
+          onRunCurrentLine={runCurrentLineFromEditor}
+          onRunAll={runAllFromEditor}
+          arr={editorArr}
+          states={editorStates}
+          cx={editorCx}
+          arrayVarName={editorArrayVarName}
+          logs={editorLogs}
+          onClearLogs={clearEditorLogs}
+          onClearPreview={clearEditorPreview}
+          executionOutput={editorExecutionOutput}
+        />
+      )}
 
-      <SimpleEditor
-        isOpen={isSimpleEditorOpen}
-        onClose={closeSimpleEditor}
-        inputValue={simpleEditorInputValue}
-        onInputChange={setSimpleEditorInputValue}
-        onRunAll={runSimpleEditorCode}
-        activeLanguage={simpleEditorLanguage}
-        onLanguageChange={setSimpleEditorLanguage}
-        arr={simpleEditorArr}
-        states={simpleEditorStates}
-        arrayVarName={simpleEditorArrayVarName}
-        logs={simpleEditorLogs}
-        onClearLogs={clearSimpleEditorLogs}
-        onClearPreview={clearSimpleEditorPreview}
-        executionOutput={simpleEditorExecutionOutput}
-      />
+      {isSimpleEditorOpen && (
+        <SimpleEditor
+          isOpen={isSimpleEditorOpen}
+          onClose={closeSimpleEditor}
+          inputValue={simpleEditorInputValue}
+          onInputChange={setSimpleEditorInputValue}
+          onRunAll={runSimpleEditorCode}
+          activeLanguage={simpleEditorLanguage}
+          onLanguageChange={setSimpleEditorLanguage}
+          arr={simpleEditorArr}
+          states={simpleEditorStates}
+          arrayVarName={simpleEditorArrayVarName}
+          logs={simpleEditorLogs}
+          onClearLogs={clearSimpleEditorLogs}
+          onClearPreview={clearSimpleEditorPreview}
+          executionOutput={simpleEditorExecutionOutput}
+        />
+      )}
 
       {authPage === "login" && (
         <Login
@@ -1126,6 +1356,7 @@ export default function App() {
           onSignup={handleSignupSuccess}
         />
       )}
+      </Suspense>
     </>
   );
 }

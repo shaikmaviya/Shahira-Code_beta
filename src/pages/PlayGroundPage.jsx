@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./PlayGroundPage.css";
 
 export default function PlayGroundPage() {
   const [activeTool, setActiveTool] = useState(null);
+  const navigate = useNavigate();
 
   const playgroundCards = useMemo(
     () => [
@@ -12,6 +14,20 @@ export default function PlayGroundPage() {
         subtitle: "1D + 2D interactive DSA playground",
         url: "/playground-visualizer.html",
         badge: "Arrays"
+      },
+      {
+        id: "profile",
+        title: "Profile",
+        subtitle: "View and edit your profile, progress, and settings.",
+        url: "/profile",
+        badge: "User"
+      },
+      {
+        id: "problems",
+        title: "Problems",
+        subtitle: "Browse and solve coding problems.",
+        url: "/problemspage",
+        badge: "Practice"
       }
     ],
     []
@@ -19,7 +35,8 @@ export default function PlayGroundPage() {
 
   const selectedCard = playgroundCards.find((card) => card.id === activeTool) || null;
 
-  if (selectedCard) {
+
+  if (selectedCard && selectedCard.id === "array-visualizer") {
     return (
       <section className="playground-page">
         <div className="viewer-header">
@@ -31,10 +48,18 @@ export default function PlayGroundPage() {
             Open In New Tab
           </a>
         </div>
-
         <iframe className="playground-frame" title={selectedCard.title} src={selectedCard.url} />
       </section>
     );
+  }
+
+  if (selectedCard && selectedCard.id === "profile") {
+    navigate("/profile");
+    return null;
+  }
+  if (selectedCard && selectedCard.id === "problems") {
+    navigate("/problemspage");
+    return null;
   }
 
   return (

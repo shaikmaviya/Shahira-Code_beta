@@ -9,10 +9,7 @@ import {
 } from "../services/profileApi";
 
 const assetAvatarModules = import.meta.glob(
-	[
-		"../assets/*.{png,jpg,jpeg,webp,avif,svg}",
-		"../assets/avatars/*.{png,jpg,jpeg,webp,avif,svg}"
-	],
+	["../assets/avatars/*.{png,jpg,jpeg,webp,avif,svg}"],
 	{
 		eager: true,
 		import: "default"
@@ -111,6 +108,19 @@ function readSolvedCache() {
 	} catch {
 		return [];
 	}
+}
+
+function formatPlan(plan) {
+	const normalized = String(plan || "free").toLowerCase();
+	if (normalized === "advanced") {
+		return "Advanced";
+	}
+
+	if (normalized === "pro") {
+		return "Pro";
+	}
+
+	return "Free";
 }
 
 export default function ProfilePage({ onBack, onRequireLogin }) {
@@ -488,6 +498,7 @@ export default function ProfilePage({ onBack, onRequireLogin }) {
 						<ul>
 							<li><strong>Email:</strong> {user.email || "-"}</li>
 							<li><strong>Provider:</strong> {user.provider || "password"}</li>
+							<li><strong>Plan:</strong> {formatPlan(user.activePlan)}</li>
 							<li><strong>Last Synced:</strong> {formatDate(new Date().toISOString())}</li>
 							<li><strong>Token:</strong> {maskedToken}</li>
 						</ul>

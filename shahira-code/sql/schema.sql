@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
   created_at DATETIME NOT NULL,
   updated_at DATETIME NULL,
   avatar_url VARCHAR(500) NULL,
-  bio VARCHAR(400) NULL
+  bio VARCHAR(400) NULL,
+  active_plan VARCHAR(30) NOT NULL DEFAULT 'free'
 );
 
 CREATE TABLE IF NOT EXISTS session_tokens (
@@ -61,4 +62,16 @@ CREATE TABLE IF NOT EXISTS user_editor_state (
   CONSTRAINT fk_user_editor_state_user
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT uk_user_editor_state UNIQUE (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS pricing_signups (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  plan_name VARCHAR(40) NOT NULL,
+  price INT NOT NULL,
+  currency VARCHAR(10) NOT NULL,
+  status VARCHAR(20) NOT NULL,
+  created_at DATETIME NOT NULL,
+  CONSTRAINT fk_pricing_signups_user
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

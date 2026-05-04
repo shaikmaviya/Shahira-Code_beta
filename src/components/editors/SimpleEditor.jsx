@@ -1,4 +1,71 @@
+
 import { useEffect, useRef, useState } from "react";
+import broomIcon from "../../assets/broom.png";
+
+// Simple syntax highlighter for Python and Java
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function highlightCode(code, language = "python") {
+  if (!code) return "";
+  let out = escapeHtml(code);
+  if (language === "python") {
+    // Control flow keywords (highlighted differently)
+    out = out.replace(/\b(if|else|elif|for|while|break|continue|pass|try|except|finally|with|lambda|yield|in|is|not|and|or)\b/g, '<span class="token-control">$1</span>');
+    // Main keywords
+    out = out.replace(/\b(def|return|import|from|as|class|global|nonlocal|assert|del|raise|True|False|None)\b/g, '<span class="token-keyword">$1</span>');
+    // Built-ins (print, len, range, etc.)
+    out = out.replace(/\b(print|len|range|input|str|int|float|list|dict|set|tuple|open|map|filter|sum|min|max|abs|type|dir|help|enumerate|zip|reversed|sorted|any|all|chr|ord|hex|bin|oct)\b/g, '<span class="token-builtin">$1</span>');
+    // Extra built-in functions (extend as needed)
+    out = out.replace(/\b(pow|divmod|id|isinstance|issubclass|iter|next|slice|super|vars|format|repr|exec|eval|compile|delattr|getattr|setattr|hasattr|property|staticmethod|classmethod|frozenset|memoryview|bytearray|bytes|complex|object|help|copyright|credits|license|quit|exit)\b/g, '<span class="token-builtin-extra">$1</span>');
+    // Function names (def ...)
+    out = out.replace(/def\s+([A-Za-z_][\w]*)/g, 'def <span class="token-function">$1</span>');
+    // Variables (simple heuristic: standalone identifiers not keywords, builtins, or numbers)
+    out = out.replace(/\b([a-zA-Z_][\w]*)\b/g, function(match) {
+      if (/^(def|return|import|from|as|class|global|nonlocal|assert|del|raise|True|False|None|if|else|elif|for|while|break|continue|pass|try|except|finally|with|lambda|yield|in|is|not|and|or|print|len|range|input|str|int|float|list|dict|set|tuple|open|map|filter|sum|min|max|abs|type|dir|help|enumerate|zip|reversed|sorted|any|all|chr|ord|hex|bin|oct|pow|divmod|id|isinstance|issubclass|iter|next|slice|super|vars|format|repr|exec|eval|compile|delattr|getattr|setattr|hasattr|property|staticmethod|classmethod|frozenset|memoryview|bytearray|bytes|complex|object|help|copyright|credits|license|quit|exit)$/.test(match)) return match;
+      if (/^\d+$/.test(match)) return match;
+      return '<span class="token-variable">' + match + '</span>';
+    });
+    // Strings
+    out = out.replace(/("[^"]*"|'[^']*')/g, '<span class="token-string">$1</span>');
+    // Numbers
+    out = out.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="token-number">$1</span>');
+    // Comments
+    out = out.replace(/(#.*)/g, '<span class="token-comment">$1</span>');
+  } else if (language === "java") {
+    // Control flow keywords
+    out = out.replace(/\b(if|else|for|while|break|continue|switch|case|default|try|catch|finally|throw|throws|return)\b/g, '<span class="token-control">$1</span>');
+    // Main keywords
+    out = out.replace(/\b(public|private|protected|static|final|void|int|double|float|char|boolean|long|short|byte|class|interface|extends|implements|new|this|super|import|package|instanceof|enum|abstract|synchronized|volatile|transient|native|strictfp|assert)\b/g, '<span class="token-keyword">$1</span>');
+    // Built-ins (System, out, println, etc.)
+    out = out.replace(/\b(System|out|println|print|String|Integer|Double|Float|Long|Short|Byte|Boolean|Math|Arrays|List|ArrayList|HashMap|Map|Set|HashSet|Scanner)\b/g, '<span class="token-builtin">$1</span>');
+    // Extra built-in functions/classes
+    out = out.replace(/\b(Collections|Optional|Stream|Files|Paths|Pattern|Matcher|Thread|Runnable|Callable|Comparator|Collectors|InputStream|OutputStream|FileInputStream|FileOutputStream|BufferedReader|BufferedWriter|PrintWriter|File|FileReader|FileWriter|StringBuilder|StringBuffer|BigInteger|BigDecimal)\b/g, '<span class="token-builtin-extra">$1</span>');
+    // Function names
+    out = out.replace(/([A-Za-z_][\w]*)\s*\(/g, '<span class="token-function">$1</span>(');
+    // Variables (simple heuristic)
+    out = out.replace(/\b([a-zA-Z_][\w]*)\b/g, function(match) {
+      if (/^(public|private|protected|static|final|void|int|double|float|char|boolean|long|short|byte|class|interface|extends|implements|new|this|super|import|package|instanceof|enum|abstract|synchronized|volatile|transient|native|strictfp|assert|if|else|for|while|break|continue|switch|case|default|try|catch|finally|throw|throws|return|System|out|println|print|String|Integer|Double|Float|Long|Short|Byte|Boolean|Math|Arrays|List|ArrayList|HashMap|Map|Set|HashSet|Scanner|Collections|Optional|Stream|Files|Paths|Pattern|Matcher|Thread|Runnable|Callable|Comparator|Collectors|InputStream|OutputStream|FileInputStream|FileOutputStream|BufferedReader|BufferedWriter|PrintWriter|File|FileReader|FileWriter|StringBuilder|StringBuffer|BigInteger|BigDecimal)$/.test(match)) return match;
+      if (/^\d+$/.test(match)) return match;
+      return '<span class="token-variable">' + match + '</span>';
+    });
+    // Strings
+    out = out.replace(/("[^"]*"|'[^']*')/g, '<span class="token-string">$1</span>');
+    // Numbers
+    out = out.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="token-number">$1</span>');
+    // Comments (single line)
+    out = out.replace(/(\/\/.*)/g, '<span class="token-comment">$1</span>');
+    // Comments (multi-line)
+    out = out.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="token-comment">$1</span>');
+  }
+  return out;
+}
 
 export default function SimpleEditor({
   isOpen,
@@ -295,6 +362,12 @@ export default function SimpleEditor({
                   <div key={`simple-line-${line}`}>{line}</div>
                 ))}
               </div>
+              {/* Syntax-highlighted preview */}
+              <div
+                className="syntax-highlight"
+                style={{ minHeight: 120, marginBottom: 4, background: "#181828", borderRadius: 6, padding: 8, overflowX: "auto" }}
+                dangerouslySetInnerHTML={{ __html: highlightCode(inputValue, language) }}
+              />
               <textarea
                 ref={inputRef}
                 className="full-editor-input"
@@ -303,6 +376,7 @@ export default function SimpleEditor({
                 onKeyDown={handleKeyDown}
                 onScroll={handleInputScroll}
                 placeholder={placeholderText}
+                style={{ position: "relative", zIndex: 1, background: "transparent" }}
               />
             </div>
           </section>
@@ -336,7 +410,7 @@ export default function SimpleEditor({
                   aria-label="Clear live preview"
                   title="Clear live preview"
                 >
-                  <img src="/src/assets/broom.png" alt="" className="icon-image" />
+                  <img src={broomIcon} alt="" className="icon-image" />
                 </button>
               </div>
             </div>
@@ -389,7 +463,7 @@ export default function SimpleEditor({
                     aria-label="Clear logs"
                     title="Clear logs"
                   >
-                    <img src="/src/assets/broom.png" alt="" className="icon-image" />
+                    <img src={broomIcon} alt="" className="icon-image" />
                   </button>
                   <span>Logs</span>
                 </div>

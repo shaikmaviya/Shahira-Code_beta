@@ -41,6 +41,9 @@ public class UserEntity {
     @Column(name = "bio", length = 400)
     private String bio;
 
+    @Column(name = "active_plan", nullable = false, length = 30)
+    private String activePlan = "free";
+
     public Long getId() {
         return id;
     }
@@ -107,5 +110,13 @@ public class UserEntity {
 
     public void setBio(String bio) {
         this.bio = bio;
+    }
+
+    public String getActivePlan() {
+        return activePlan;
+    }
+
+    public void setActivePlan(String activePlan) {
+        this.activePlan = activePlan;
     }
 }

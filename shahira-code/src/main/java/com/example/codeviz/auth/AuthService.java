@@ -183,6 +183,11 @@ public class AuthService {
     }
 
     private AuthUser toAuthUser(UserEntity user) {
-        return new AuthUser(user.getName(), user.getEmail());
+        return new AuthUser(user.getName(), user.getEmail(), normalizePlan(user.getActivePlan()));
+    }
+
+    private String normalizePlan(String value) {
+        String normalized = normalize(value).toLowerCase();
+        return normalized.isEmpty() ? "free" : normalized;
     }
 }

@@ -1,0 +1,55 @@
+/* Variables */
+.syntax-highlight .token-variable {
+  color: #c084fc; /* purple */
+}
+
+/* Control flow (if, else, for, while, etc.) */
+.syntax-highlight .token-control {
+  color: #ff9800; /* amber/orange */
+  font-weight: bold;
+}
+
+/* Extra built-in functions (Python/Java) */
+.syntax-highlight .token-builtin-extra {
+  color: #00bcd4; /* cyan */
+}
+/* Simple syntax highlighting for Python and Java code in the SimpleEditor */
+
+.syntax-highlight {
+  font-family: "Fira Mono", "Consolas", monospace;
+  font-size: 1em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Python keywords */
+.syntax-highlight .token-keyword {
+  color: #1976d2; /* blue */
+  font-weight: bold;
+}
+
+/* Python built-in functions (e.g., print) */
+.syntax-highlight .token-builtin {
+  color: #a0522d; /* brown */
+}
+
+/* Function names */
+.syntax-highlight .token-function {
+  color: #1565c0; /* darker blue */
+}
+
+/* Strings */
+.syntax-highlight .token-string {
+  color: #43a047; /* green */
+}
+
+/* Numbers */
+.syntax-highlight .token-number {
+  color: #d84315; /* orange */
+}
+
+/* Comments */
+.syntax-highlight .token-comment {
+  color: #757575; /* gray */
+  font-style: italic;
+}

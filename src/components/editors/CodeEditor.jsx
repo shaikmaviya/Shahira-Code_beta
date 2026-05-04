@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import broomIcon from "../../assets/broom.png";
 
 export default function CodeEditor({
   isOpen,
@@ -466,7 +467,7 @@ export default function CodeEditor({
                   aria-label="Clear live preview"
                   title="Clear live preview"
                 >
-                  <img src="/src/assets/broom.png" alt="" className="icon-image" />
+                  <img src={broomIcon} alt="" className="icon-image" />
                 </button>
               </div>
             </div>
@@ -527,7 +528,7 @@ export default function CodeEditor({
                     aria-label="Clear logs"
                     title="Clear logs"
                   >
-                    <img src="/src/assets/broom.png" alt="" className="icon-image" />
+                    <img src={broomIcon} alt="" className="icon-image" />
                   </button>
                   <span>Logs</span>
                 </div>

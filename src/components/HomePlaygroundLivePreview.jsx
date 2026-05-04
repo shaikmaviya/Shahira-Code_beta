@@ -1,3 +1,5 @@
+import broomIcon from "../assets/broom.png";
+
 export default function HomePlaygroundLivePreview({
   logRef,
   arr,
@@ -34,7 +36,7 @@ export default function HomePlaygroundLivePreview({
             aria-label="Clear logs"
             title="Clear logs"
           >
-            <img src="/src/assets/broom.png" alt="" className="icon-image" />
+            <img src={broomIcon} alt="" className="icon-image" />
           </button>
         </div>
         {logs.length === 0 && (

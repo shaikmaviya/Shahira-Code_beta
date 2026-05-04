@@ -2,6 +2,8 @@
   max-width: 1180px;
   margin: 28px auto;
   padding: 0 16px;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .profile-page.profile-logged-out {
@@ -13,6 +15,7 @@
   grid-template-columns: 280px minmax(0, 1fr);
   gap: 1.4rem;
   align-items: start;
+  min-width: 0;
 }
 
 .profile-card {
@@ -22,6 +25,7 @@
   background: linear-gradient(180deg, rgba(17, 21, 40, 0.92), rgba(10, 13, 28, 0.88));
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(12px);
+  min-width: 0;
 }
 
 .profile-identity {
@@ -271,11 +275,13 @@
   font-size: 0.84rem;
   margin-bottom: 12px;
   padding: 0;
+  overflow-wrap: anywhere;
 }
 
 .profile-main {
   display: grid;
   gap: 1.4rem;
+  min-width: 0;
 }
 
 .profile-card-head {
@@ -302,6 +308,7 @@
   padding-bottom: 8px;
   scroll-snap-type: x proximity;
   scrollbar-width: thin;
+  max-width: 100%;
 }
 
 .profile-problem {
@@ -392,6 +399,10 @@
   margin: 6px 0 8px;
   color: var(--muted);
   font-size: 0.62rem;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
 }
 
 .practice-month {
@@ -403,6 +414,10 @@
   grid-auto-flow: column;
   grid-auto-columns: 12px;
   gap: 4px;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
 }
 
 .practice-week {
