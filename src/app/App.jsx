@@ -1,16 +1,16 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, } from "react";
 import HomePage from "../pages/HomePage";
 import { logoutUser } from "../features/auth/authApi";
-import { createPricingSignup, saveUserProblem, upsertUserProgress } from "../services/profileApi";
+import { saveUserProblem, upsertUserProgress } from "../services/profileApi";
 import { executeArrayCode } from "../features/arrays/executeArrayCode";
 import { executeCode } from "../services/editorApi";
+import { normalizePath, resolveRouteState, ROUTE_PATHS } from "./urlNavigation";
 
 const ProblemsPage = lazy(() => import("../pages/ProblemsPage"));
 const CodeEditor = lazy(() => import("../components/editors/CodeEditor"));
 const SimpleEditor = lazy(() => import("../components/editors/SimpleEditor"));
 const ProfilePage = lazy(() => import("../pages/ProfilePage"));
 const ContactPage = lazy(() => import("../pages/ContactPage"));
-const PricingPage = lazy(() => import("../pages/PricingPage"));
 const PlayGroundPage = lazy(() => import("../pages/PlayGroundPage"));
 const Login = lazy(() => import("../features/auth/Login"));
 const Signup = lazy(() => import("../features/auth/Signup"));
@@ -175,60 +175,6 @@ const curatedProblems = [
   }
 ];
 
-const ROUTE_PATHS = {
-  home: "/",
-  problems: "/problems",
-  profile: "/profile",
-  pricing: "/pricing",
-  playground: "/playground",
-  contact: "/contact",
-  login: "/login",
-  signup: "/signup"
-};
-
-const PLAN_RANK = {
-  free: 0,
-  pro: 1,
-  advanced: 2
-};
-
-function normalizePlan(plan) {
-  const normalized = String(plan || "free").trim().toLowerCase();
-  if (normalized === "simple") {
-    return "pro";
-  }
-
-  if (normalized === "advance") {
-    return "advanced";
-  }
-
-  return PLAN_RANK[normalized] === undefined ? "free" : normalized;
-}
-
-function hasPlanAccess(currentPlan, requiredPlan) {
-  return PLAN_RANK[normalizePlan(currentPlan)] >= PLAN_RANK[requiredPlan];
-}
-
-function getPlanLabel(plan) {
-  const normalizedPlan = normalizePlan(plan);
-  if (normalizedPlan === "advanced") {
-    return "Advanced";
-  }
-
-  if (normalizedPlan === "pro") {
-    return "Pro";
-  }
-
-  return "Free";
-}
-
-function normalizePath(pathname) {
-  if (!pathname || pathname === "/") {
-    return "/";
-  }
-
-  return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
-}
 
 function createEmptyExecutionOutput() {
   return {
@@ -335,7 +281,6 @@ export default function App() {
   const [simpleEditorLanguage, setSimpleEditorLanguage] = useState("python");
   const [isProblemsOpen, setIsProblemsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [isPlaygroundOpen, setIsPlaygroundOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState(null);
@@ -350,12 +295,6 @@ export default function App() {
   });
   const [authPage, setAuthPage] = useState("none");
   const [currentUser, setCurrentUser] = useState(null);
-  const [pricingStatus, setPricingStatus] = useState({
-    pendingPlan: "",
-    message: "",
-    type: "info"
-  });
-  const activePlan = normalizePlan(currentUser?.activePlan);
 
   const landingRunningRef = useRef(false);
   const editorRunningRef = useRef(false);
@@ -367,6 +306,7 @@ export default function App() {
   const logRef = useRef(null);
   const editorPanelRef = useRef(null);
   const [editorGlow, setEditorGlow] = useState(false);
+  const routeStateRef = useRef(null);
 
   const topics = useMemo(
     () => [
@@ -415,34 +355,36 @@ export default function App() {
   );
   const nextLandingLineNumber = introEditorLines.length + landingHistory.length + 1;
 
-  const syncRouteState = useCallback((pathname) => {
-    const normalizedPath = normalizePath(pathname);
-    const knownPaths = new Set(Object.values(ROUTE_PATHS));
-    const resolvedPath = knownPaths.has(normalizedPath) ? normalizedPath : ROUTE_PATHS.home;
+  function getRoutePathFromLocation() {
+    const { pathname } = window.location;
+    return pathname || "/";
+  }
 
-    if (resolvedPath !== normalizedPath) {
-      window.history.replaceState({}, "", resolvedPath);
+  const syncRouteState = useCallback((pathname) => {
+    const nextState = resolveRouteState(pathname);
+
+    if (nextState.shouldReplace) {
+      window.history.replaceState({}, "", nextState.resolvedPath);
     }
 
-    setIsProblemsOpen(resolvedPath === ROUTE_PATHS.problems);
-    setIsProfileOpen(resolvedPath === ROUTE_PATHS.profile);
-    setIsPricingOpen(resolvedPath === ROUTE_PATHS.pricing);
-    setIsPlaygroundOpen(resolvedPath === ROUTE_PATHS.playground);
-    setIsContactOpen(resolvedPath === ROUTE_PATHS.contact);
-    setAuthPage(
-      resolvedPath === ROUTE_PATHS.login
-        ? "login"
-        : resolvedPath === ROUTE_PATHS.signup
-          ? "signup"
-          : "none"
-    );
+    routeStateRef.current = nextState;
+
+    setIsProblemsOpen(nextState.isProblemsOpen);
+    setIsProfileOpen(nextState.isProfileOpen);
+    setIsPlaygroundOpen(nextState.isPlaygroundOpen);
+    setIsContactOpen(nextState.isContactOpen);
+    setAuthPage(nextState.authPage);
   }, []);
 
   const navigateTo = useCallback((pathname) => {
     const normalizedPath = normalizePath(pathname);
 
     if (window.location.pathname !== normalizedPath) {
-      window.history.pushState({}, "", normalizedPath);
+      try {
+        window.history.pushState({}, "", normalizedPath);
+      } catch {
+        // Ignore history errors (e.g., blocked pushState) and still update UI state.
+      }
     }
 
     syncRouteState(normalizedPath);
@@ -502,10 +444,7 @@ export default function App() {
     if (existingSession) {
       try {
         const parsedUser = JSON.parse(existingSession);
-        setCurrentUser({
-          ...parsedUser,
-          activePlan: normalizePlan(parsedUser?.activePlan)
-        });
+        setCurrentUser(parsedUser);
       } catch {
         localStorage.removeItem("codeviz_user");
       }
@@ -584,13 +523,13 @@ export default function App() {
 
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [isProfileOpen, isPricingOpen, isProblemsOpen, isContactOpen, isEditorOpen, isSimpleEditorOpen, authPage]);
+  }, [isProfileOpen, isProblemsOpen, isContactOpen, isEditorOpen, isSimpleEditorOpen, authPage]);
 
   useEffect(() => {
-    syncRouteState(window.location.pathname);
+    syncRouteState(getRoutePathFromLocation());
 
     function handlePopState() {
-      syncRouteState(window.location.pathname);
+      syncRouteState(getRoutePathFromLocation());
     }
 
     window.addEventListener("popstate", handlePopState);
@@ -635,11 +574,6 @@ export default function App() {
   }
 
   function openEditor() {
-    if (!currentUser) {
-      navigateTo(ROUTE_PATHS.login);
-      return;
-    }
-
     setIsEditorOpen(false);
     setSelectedProblem(null);
     setSimpleEditorLanguage("python");
@@ -671,18 +605,6 @@ export default function App() {
       event.preventDefault();
     }
 
-    if (!currentUser) {
-      navigateTo(ROUTE_PATHS.login);
-      return;
-    }
-
-    // Only allow 'pro' or 'advanced' users
-    if (!hasPlanAccess(activePlan, "pro")) {
-      openPricingPage();
-      addLandingLog("Upgrade to Pro to access practice problems.", "warn");
-      return;
-    }
-
     setIsEditorOpen(false);
     setIsSimpleEditorOpen(false);
     navigateTo(ROUTE_PATHS.problems);
@@ -703,27 +625,7 @@ export default function App() {
     navigateTo(ROUTE_PATHS.home);
   }
 
-  function openPricingPage() {
-    setIsEditorOpen(false);
-    setIsSimpleEditorOpen(false);
-    navigateTo(ROUTE_PATHS.pricing);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
   function openPlaygroundPage() {
-    if (!currentUser) {
-      navigateTo(ROUTE_PATHS.login);
-      return;
-    }
-
-
-    // Only allow 'advanced' users
-    if (!hasPlanAccess(activePlan, "advanced")) {
-      openPricingPage();
-      addLandingLog("Upgrade to Advanced to access the Playground.", "warn");
-      return;
-    }
-
     setIsEditorOpen(false);
     setIsSimpleEditorOpen(false);
     navigateTo(ROUTE_PATHS.playground);
@@ -750,12 +652,6 @@ export default function App() {
   }
 
   function openProblemInEditor(problem) {
-    if (!hasPlanAccess(activePlan, "pro")) {
-      openPricingPage();
-      addLandingLog("Upgrade to Pro to open practice problems.", "warn");
-      return;
-    }
-
     const extractedProblemArray = extractArrayFromCode(problem?.input || "");
 
     setIsProblemsOpen(false);
@@ -964,11 +860,6 @@ export default function App() {
   }
 
   function runProblemDemo(command) {
-    if (!currentUser) {
-      navigateTo(ROUTE_PATHS.login);
-      return;
-    }
-
     openEditor();
     setSimpleEditorInputValue(command);
   }
@@ -981,99 +872,17 @@ export default function App() {
     navigateTo(ROUTE_PATHS.home);
   }
 
-  async function activatePricingPlan(planName, price, token, baseUser = currentUser) {
-    const nextPlan = normalizePlan(planName);
-    const planLabel = getPlanLabel(nextPlan);
-    const updatedUser = {
-      ...(baseUser || {}),
-      activePlan: nextPlan
-    };
-
-    setPricingStatus({
-      pendingPlan: nextPlan,
-      message: `Activating ${planLabel} plan...`,
-      type: "info"
-    });
-
-    setCurrentUser(updatedUser);
-    localStorage.setItem("codeviz_user", JSON.stringify(updatedUser));
-    setPricingStatus({
-      pendingPlan: "",
-      message: `${planLabel} plan activated. You can use your new access now.`,
-      type: "success"
-    });
-    addLandingLog(`${planLabel} plan activated.`, "ok");
-
-    try {
-      await createPricingSignup(token, {
-        planName,
-        price,
-        currency: "INR"
-      });
-    } catch (error) {
-      setPricingStatus({
-        pendingPlan: "",
-        message: `${planLabel} is active in this browser, but server sync failed: ${error.message || "please try again later."}`,
-        type: "error"
-      });
-      addLandingLog(error.message || "Unable to sync pricing signup.", "err");
-    }
-
-    return updatedUser;
-  }
-
-  async function activatePendingPricingPlan(user) {
-    const token = localStorage.getItem("codeviz_token");
-    const rawPendingPlan = localStorage.getItem("codeviz_pending_plan");
-    if (!token || !rawPendingPlan) {
-      return false;
-    }
-
-    try {
-      const pendingPlan = JSON.parse(rawPendingPlan);
-      localStorage.removeItem("codeviz_pending_plan");
-      navigateTo(ROUTE_PATHS.pricing);
-      await activatePricingPlan(pendingPlan.planName, pendingPlan.price, token, user);
-      return true;
-    } catch (error) {
-      localStorage.removeItem("codeviz_pending_plan");
-      setPricingStatus({
-        pendingPlan: "",
-        message: error.message || "Unable to activate your selected plan after login.",
-        type: "error"
-      });
-      navigateTo(ROUTE_PATHS.pricing);
-      return true;
-    }
-  }
-
   function handleLoginSuccess(user) {
-    const normalizedUser = {
-      ...user,
-      activePlan: normalizePlan(user?.activePlan)
-    };
-    setCurrentUser(normalizedUser);
-    localStorage.setItem("codeviz_user", JSON.stringify(normalizedUser));
-    activatePendingPricingPlan(normalizedUser).then((handledPendingPlan) => {
-      if (!handledPendingPlan) {
-        navigateTo(ROUTE_PATHS.home);
-      }
-    });
+    setCurrentUser(user);
+    localStorage.setItem("codeviz_user", JSON.stringify(user));
+    navigateTo(ROUTE_PATHS.home);
     addLandingLog(`Welcome back, ${user.name}`, "ok");
   }
 
   function handleSignupSuccess(user) {
-    const normalizedUser = {
-      ...user,
-      activePlan: normalizePlan(user?.activePlan)
-    };
-    setCurrentUser(normalizedUser);
-    localStorage.setItem("codeviz_user", JSON.stringify(normalizedUser));
-    activatePendingPricingPlan(normalizedUser).then((handledPendingPlan) => {
-      if (!handledPendingPlan) {
-        navigateTo(ROUTE_PATHS.home);
-      }
-    });
+    setCurrentUser(user);
+    localStorage.setItem("codeviz_user", JSON.stringify(user));
+    navigateTo(ROUTE_PATHS.home);
     addLandingLog(`Account created for ${user.name}`, "ok");
   }
 
@@ -1095,32 +904,6 @@ export default function App() {
     addLandingLog("Logged out", "info");
   }
 
-  async function handlePricingSignup(planName, price) {
-    const nextPlan = normalizePlan(planName);
-    const planLabel = getPlanLabel(nextPlan);
-    const token = localStorage.getItem("codeviz_token");
-    if (!token) {
-      localStorage.setItem("codeviz_pending_plan", JSON.stringify({ planName, price }));
-      setPricingStatus({
-        pendingPlan: "",
-        message: `Login first and I will activate ${planLabel} automatically.`,
-        type: "error"
-      });
-      navigateTo(ROUTE_PATHS.login);
-      return;
-    }
-
-    try {
-      await activatePricingPlan(planName, price, token);
-    } catch (error) {
-      setPricingStatus({
-        pendingPlan: "",
-        message: error.message || "Unable to activate this plan right now.",
-        type: "error"
-      });
-      addLandingLog(error.message || "Unable to save pricing signup.", "err");
-    }
-  }
 
   return (
     <>
@@ -1165,30 +948,11 @@ export default function App() {
             <li>
               <button type="button" className="nav-link-btn" onClick={openProblemsPage}>
                 Problems
-                {(!currentUser || !hasPlanAccess(activePlan, "pro")) && (
-                  <svg
-                    style={{ marginLeft: 6, verticalAlign: "middle" }}
-                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                  >
-                    <rect x="3" y="11" width="18" height="10" rx="2"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
-                )}
               </button>
             </li>
-            <li><button type="button" className="nav-link-btn" onClick={openPricingPage}>Pricing</button></li>
             <li>
               <button type="button" className="nav-link-btn" onClick={openPlaygroundPage}>
                 Playground
-                {(!currentUser || !hasPlanAccess(activePlan, "advanced")) && (
-                  <svg
-                    style={{ marginLeft: 6, verticalAlign: "middle" }}
-                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                  >
-                    <rect x="3" y="11" width="18" height="10" rx="2"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
-                )}
               </button>
             </li>
             <li><button type="button" className="nav-link-btn" onClick={openContactPage}>Contact</button></li>
@@ -1197,14 +961,6 @@ export default function App() {
         <div className="nav-right">
           {currentUser ? (
             <div className="nav-auth">
-              <button
-                type="button"
-                className="plan-chip"
-                onClick={openPricingPage}
-                title="Manage plan"
-              >
-                {activePlan === "advanced" ? "Advanced" : activePlan === "pro" ? "Pro" : "Free"}
-              </button>
               <span className="nav-user">{currentUser.name}</span>
               <button
                 type="button"
@@ -1224,9 +980,9 @@ export default function App() {
           ) : (
             <button
               className="nbtn"
-              onClick={openPricingPage}
+              onClick={openAuthLogin}
             >
-              Start Free →
+              Login →
             </button>
           )}
         </div>
@@ -1242,19 +998,6 @@ export default function App() {
         />
       )}
 
-      {isPricingOpen && (
-        <PricingPage
-          onBack={goHome}
-          currentPlan={activePlan}
-          pendingPlan={pricingStatus.pendingPlan}
-          pricingMessage={pricingStatus.message}
-          pricingMessageType={pricingStatus.type}
-          onStartFree={() => handlePricingSignup("Free", 0)}
-          onGetPro={() => handlePricingSignup("Pro", 99)}
-          onGetAdvanced={() => handlePricingSignup("Advanced", 199)}
-        />
-      )}
-
       {isProblemsOpen && (
         <ProblemsPage
           onClose={goHome}
@@ -1264,14 +1007,14 @@ export default function App() {
       )}
 
       {isPlaygroundOpen && (
-        <PlayGroundPage />
+        <PlayGroundPage onNavigate={navigateTo} />
       )}
 
       {isContactOpen && (
         <ContactPage onBack={goHome} />
       )}
 
-      {!isPricingOpen && !isProfileOpen && !isProblemsOpen && !isPlaygroundOpen && !isContactOpen && authPage === "none" && (
+      {!isProfileOpen && !isProblemsOpen && !isPlaygroundOpen && !isContactOpen && authPage === "none" && (
         <HomePage
           inputRef={inputRef}
           editorPanelRef={editorPanelRef}

@@ -110,19 +110,6 @@ function readSolvedCache() {
 	}
 }
 
-function formatPlan(plan) {
-	const normalized = String(plan || "free").toLowerCase();
-	if (normalized === "advanced") {
-		return "Advanced";
-	}
-
-	if (normalized === "pro") {
-		return "Pro";
-	}
-
-	return "Free";
-}
-
 export default function ProfilePage({ onBack, onRequireLogin }) {
 	const [user, setUser] = useState(() => {
 		const rawUser = localStorage.getItem("codeviz_user");
@@ -498,7 +485,6 @@ export default function ProfilePage({ onBack, onRequireLogin }) {
 						<ul>
 							<li><strong>Email:</strong> {user.email || "-"}</li>
 							<li><strong>Provider:</strong> {user.provider || "password"}</li>
-							<li><strong>Plan:</strong> {formatPlan(user.activePlan)}</li>
 							<li><strong>Last Synced:</strong> {formatDate(new Date().toISOString())}</li>
 							<li><strong>Token:</strong> {maskedToken}</li>
 						</ul>

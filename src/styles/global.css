@@ -1739,6 +1739,44 @@ footer {
   overflow: hidden
 }
 
+.editor-code-surface {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.editor-highlight-layer {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: .9rem;
+  color: var(--text);
+  pointer-events: none;
+  overflow: auto;
+  scrollbar-width: none;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+.editor-highlight-layer.syntax-highlight {
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.editor-highlight-layer::-webkit-scrollbar {
+  width: 0;
+  height: 0
+}
+
+.full-editor-input.syntax-overlay-input {
+  position: relative;
+  z-index: 1;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: var(--text);
+}
+
 .editor-input-wrap:focus-within {
   border-color: rgba(0, 212, 255, .6);
   box-shadow: inset 0 0 0 1px rgba(0, 212, 255, .35)

@@ -5,6 +5,7 @@ import sys
 import os
 import signal
 import time
+import shutil
 from datetime import datetime
 
 processes = {}
@@ -30,14 +31,13 @@ def timestamp():
 
 def stream_output(process, label, color):
     prefix = c(color, f"[{label}]")
-    for line in iter(process.stdout.readline, b""):
-        decoded = line.decode("utf-8", errors="replace").rstrip()
+    if not process.stdout:
+        return
+
+    for line in iter(process.stdout.readline, ""):
+        decoded = line.rstrip()
         if decoded:
             print(f"{timestamp()} {prefix} {decoded}")
-    for line in iter(process.stderr.readline, b""):
-        decoded = line.decode("utf-8", errors="replace").rstrip()
-        if decoded:
-            print(f"{timestamp()} {prefix} {c('red', decoded)}")
 
 def launch(name, cmd, cwd=None):
     print(f"\n{timestamp()} {c('bold', f'Starting {name}...')}")
@@ -46,9 +46,11 @@ def launch(name, cmd, cwd=None):
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
             cwd=cwd or os.getcwd(),
-            shell=(sys.platform == "win32"),
+            shell=False,
         )
         with lock:
             processes[name] = proc
@@ -75,11 +77,13 @@ def shutdown(signum=None, frame=None):
     sys.exit(0)
 
 def get_npm_command():
-    return ["npm", "run", "dev"]
+    npm_cmd = "npm.cmd" if sys.platform == "win32" else "npm"
+    resolved = shutil.which(npm_cmd) or npm_cmd
+    return [resolved, "run", "dev"]
 
 def get_mvn_command():
     if sys.platform == "win32":
-        return [r".\mvnw.cmd", "spring-boot:run"]
+        return ["mvnw.cmd", "spring-boot:run"]
     return ["./mvnw", "spring-boot:run"]
 
 def print_banner():
@@ -108,8 +112,12 @@ def main():
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
-    frontend_dir = sys.argv[1] if len(sys.argv) >= 2 else None
+    frontend_dir = sys.argv[1] if len(sys.argv) >= 2 else os.getcwd()
     backend_dir = sys.argv[2] if len(sys.argv) >= 3 else os.path.join(os.getcwd(), "shahira-code")
+
+    if frontend_dir and not os.path.isdir(frontend_dir):
+        print(c("red", f"  ERROR: Frontend directory not found: {frontend_dir}"))
+        sys.exit(1)
 
     if not os.path.isdir(backend_dir):
         print(c("red", f"  ERROR: Backend directory not found: {backend_dir}"))

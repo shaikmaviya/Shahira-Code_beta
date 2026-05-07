@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import "./PlayGroundPage.css";
 
-export default function PlayGroundPage() {
+export default function PlayGroundPage({ onNavigate }) {
   const [activeTool, setActiveTool] = useState(null);
-  const navigate = useNavigate();
+  const navigateTo = typeof onNavigate === "function" ? onNavigate : (path) => {
+    if (path) {
+      window.location.assign(path);
+    }
+  };
 
   const playgroundCards = useMemo(
     () => [
@@ -26,7 +29,7 @@ export default function PlayGroundPage() {
         id: "problems",
         title: "Problems",
         subtitle: "Browse and solve coding problems.",
-        url: "/problemspage",
+        url: "/problems",
         badge: "Practice"
       }
     ],
@@ -54,11 +57,11 @@ export default function PlayGroundPage() {
   }
 
   if (selectedCard && selectedCard.id === "profile") {
-    navigate("/profile");
+    navigateTo("/profile");
     return null;
   }
   if (selectedCard && selectedCard.id === "problems") {
-    navigate("/problemspage");
+    navigateTo("/problems");
     return null;
   }
 
