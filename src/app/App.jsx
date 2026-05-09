@@ -12,6 +12,7 @@ const SimpleEditor = lazy(() => import("../components/editors/SimpleEditor"));
 const ProfilePage = lazy(() => import("../pages/ProfilePage"));
 const ContactPage = lazy(() => import("../pages/ContactPage"));
 const PlayGroundPage = lazy(() => import("../pages/PlayGroundPage"));
+const PricingPage = lazy(() => import("../pages/PricingPage"));
 const Login = lazy(() => import("../features/auth/Login"));
 const Signup = lazy(() => import("../features/auth/Signup"));
 
@@ -283,6 +284,7 @@ export default function App() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isPlaygroundOpen, setIsPlaygroundOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState(null);
   const [completedProblemIds, setCompletedProblemIds] = useState(() => {
     try {
@@ -373,6 +375,7 @@ export default function App() {
     setIsProfileOpen(nextState.isProfileOpen);
     setIsPlaygroundOpen(nextState.isPlaygroundOpen);
     setIsContactOpen(nextState.isContactOpen);
+    setIsPricingOpen(nextState.isPricingOpen);
     setAuthPage(nextState.authPage);
   }, []);
 
@@ -523,7 +526,7 @@ export default function App() {
 
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [isProfileOpen, isProblemsOpen, isContactOpen, isEditorOpen, isSimpleEditorOpen, authPage]);
+  }, [isProfileOpen, isProblemsOpen, isContactOpen, isPricingOpen, isEditorOpen, isSimpleEditorOpen, authPage]);
 
   useEffect(() => {
     syncRouteState(getRoutePathFromLocation());
@@ -621,6 +624,7 @@ export default function App() {
     setIsProblemsOpen(false);
     setIsPlaygroundOpen(false);
     setIsContactOpen(false);
+    setIsPricingOpen(false);
     setAuthPage("none");
     setIsProfileOpen(true);
     navigateTo(ROUTE_PATHS.profile);
@@ -645,6 +649,17 @@ export default function App() {
     setIsEditorOpen(false);
     setIsSimpleEditorOpen(false);
     navigateTo(ROUTE_PATHS.contact);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openPricingPage(event) {
+    if (event?.preventDefault) {
+      event.preventDefault();
+    }
+
+    setIsEditorOpen(false);
+    setIsSimpleEditorOpen(false);
+    navigateTo(ROUTE_PATHS.pricing);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -953,6 +968,7 @@ export default function App() {
           <button type="button" className="nav-pill" onClick={goToTopicsFromNav}>Topics</button>
           <button type="button" className="nav-pill" onClick={openProblemsPage}>Problems</button>
           <button type="button" className="nav-pill" onClick={openPlaygroundPage}>Playground</button>
+          <button type="button" className="nav-pill" onClick={openPricingPage}>Pricing</button>
           <button type="button" className="nav-pill" onClick={openContactPage}>Contact</button>
         </div>
         <div className="site-auth">
@@ -1006,7 +1022,11 @@ export default function App() {
         <ContactPage onBack={goHome} />
       )}
 
-      {!isProfileOpen && !isProblemsOpen && !isPlaygroundOpen && !isContactOpen && authPage === "none" && (
+      {isPricingOpen && (
+        <PricingPage onBack={goHome} />
+      )}
+
+      {!isProfileOpen && !isProblemsOpen && !isPlaygroundOpen && !isContactOpen && !isPricingOpen && authPage === "none" && (
         <HomePage
           inputRef={inputRef}
           editorPanelRef={editorPanelRef}

@@ -3,6 +3,7 @@ export const ROUTE_PATHS = {
   problems: "/problems",
   profile: "/profile",
   playground: "/playground",
+  pricing: "/pricing",
   contact: "/contact",
   login: "/login",
   signup: "/signup"
@@ -14,6 +15,7 @@ const ROUTE_STATE_BY_PATH = Object.values(ROUTE_PATHS).reduce((acc, path) => {
     isProblemsOpen: path === ROUTE_PATHS.problems,
     isProfileOpen: path === ROUTE_PATHS.profile,
     isPlaygroundOpen: path === ROUTE_PATHS.playground,
+    isPricingOpen: path === ROUTE_PATHS.pricing,
     isContactOpen: path === ROUTE_PATHS.contact,
     authPage: path === ROUTE_PATHS.login ? "login" : path === ROUTE_PATHS.signup ? "signup" : "none"
   };
