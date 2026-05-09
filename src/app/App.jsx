@@ -618,6 +618,11 @@ export default function App() {
   function openProfilePage() {
     setIsEditorOpen(false);
     setIsSimpleEditorOpen(false);
+    setIsProblemsOpen(false);
+    setIsPlaygroundOpen(false);
+    setIsContactOpen(false);
+    setAuthPage("none");
+    setIsProfileOpen(true);
     navigateTo(ROUTE_PATHS.profile);
   }
 
@@ -649,6 +654,18 @@ export default function App() {
     setSelectedProblem(null);
     navigateTo(ROUTE_PATHS.home);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function goToTopicsFromNav() {
+    if (window.location.pathname !== ROUTE_PATHS.home) {
+      goHome();
+      setTimeout(() => {
+        goToTopics();
+      }, 120);
+      return;
+    }
+
+    goToTopics();
   }
 
   function openProblemInEditor(problem) {
@@ -925,46 +942,26 @@ export default function App() {
       </div>
 
       <Suspense fallback={<LoadingView />}>
-      <nav data-reveal>
-        <div className="nav-left">
-          <div className="logo" onClick={goHome} style={{ cursor: "pointer" }}>
-            Shahira <em>Code</em> <small>beta</small>
-          </div>
+      <header className="site-header" data-reveal>
+        <div className="site-brand">
+          <button type="button" className="brand-button" onClick={goHome}>
+            Shahira <span>Code</span>
+          </button>
+          <span className="brand-chip">beta</span>
         </div>
-        <div className="nav-center">
-          <ul className="nav-links">
-            <li>
-              <a
-                href={ROUTE_PATHS.home}
-                onClick={(event) => {
-                  event.preventDefault();
-                  goHome();
-                }}
-              >
-                Home
-              </a>
-            </li>
-            <li><a href={`${ROUTE_PATHS.home}#topics`} onClick={goHome}>Topics</a></li>
-            <li>
-              <button type="button" className="nav-link-btn" onClick={openProblemsPage}>
-                Problems
-              </button>
-            </li>
-            <li>
-              <button type="button" className="nav-link-btn" onClick={openPlaygroundPage}>
-                Playground
-              </button>
-            </li>
-            <li><button type="button" className="nav-link-btn" onClick={openContactPage}>Contact</button></li>
-          </ul>
+        <div className="site-actions">
+          <button type="button" className="nav-pill" onClick={goToTopicsFromNav}>Topics</button>
+          <button type="button" className="nav-pill" onClick={openProblemsPage}>Problems</button>
+          <button type="button" className="nav-pill" onClick={openPlaygroundPage}>Playground</button>
+          <button type="button" className="nav-pill" onClick={openContactPage}>Contact</button>
         </div>
-        <div className="nav-right">
+        <div className="site-auth">
           {currentUser ? (
-            <div className="nav-auth">
-              <span className="nav-user">{currentUser.name}</span>
+            <>
+              <span className="auth-user">{currentUser.name}</span>
               <button
                 type="button"
-                className="nav-icon-btn"
+                className="profile-btn"
                 onClick={openProfilePage}
                 aria-label="Open profile"
                 title="Profile"
@@ -976,17 +973,12 @@ export default function App() {
                   />
                 </svg>
               </button>
-            </div>
+            </>
           ) : (
-            <button
-              className="nbtn"
-              onClick={openAuthLogin}
-            >
-              Login →
-            </button>
+            <button className="auth-pill" onClick={openAuthLogin}>Login</button>
           )}
         </div>
-      </nav>
+      </header>
 
       {isProfileOpen && (
         <ProfilePage

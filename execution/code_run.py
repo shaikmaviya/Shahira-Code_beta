@@ -112,8 +112,11 @@ def main():
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
-    frontend_dir = sys.argv[1] if len(sys.argv) >= 2 else os.getcwd()
-    backend_dir = sys.argv[2] if len(sys.argv) >= 3 else os.path.join(os.getcwd(), "shahira-code")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.abspath(os.path.join(script_dir, ".."))
+
+    frontend_dir = sys.argv[1] if len(sys.argv) >= 2 else repo_root
+    backend_dir = sys.argv[2] if len(sys.argv) >= 3 else os.path.join(repo_root, "shahira-code")
 
     if frontend_dir and not os.path.isdir(frontend_dir):
         print(c("red", f"  ERROR: Frontend directory not found: {frontend_dir}"))
