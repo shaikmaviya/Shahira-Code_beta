@@ -1,7 +1,7 @@
 # Shahira Code
 
 <p align="center">
-	<img src="public/logo.png" alt="Shahira Code logo" width="140" />
+	<img src="frontend/public/logo.png" alt="Shahira Code logo" width="140" />
 </p>
 
 Shahira Code is a visual DSA learning platform that turns code into live animations. Students can type array operations, run curated problems, inspect time and space complexity, and track practice progress through a React frontend backed by a Spring Boot API.
@@ -50,21 +50,23 @@ The home page highlights the main idea: type code, watch the data structure move
 
 ```text
 .
-|-- src/                         # React frontend source
-|   |-- app/                     # Main app shell and route state
-|   |-- components/              # Editors and visual preview components
-|   |-- features/                # Auth and array execution helpers
-|   |-- pages/                   # Home, problems, profile, pricing, contact, playground
-|   |-- services/                # Frontend API clients
-|   `-- styles/                  # Global and syntax styles
-|-- public/                      # Static assets and standalone visualizer HTML
+|-- frontend/                    # React frontend (Vite)
+|   |-- src/                     # React frontend source
+|   |   |-- app/                 # Main app shell and route state
+|   |   |-- components/          # Editors and visual preview components
+|   |   |-- features/            # Auth and array execution helpers
+|   |   |-- pages/               # Home, problems, profile, pricing, contact, playground
+|   |   |-- services/            # Frontend API clients
+|   |   `-- styles/              # Global and syntax styles
+|   |-- public/                  # Static assets and standalone visualizer HTML
+|   `-- package.json             # Frontend scripts and dependencies
 |-- shahira-code/                # Spring Boot backend
 |   |-- src/main/java/...        # Auth, profile, pricing, progress, execution APIs
 |   |-- src/main/resources/      # Spring application configuration
 |   `-- sql/                     # Database schema
 |-- execution/                   # Local helper scripts for code execution/autocommit
 |-- docs/images/                 # README images
-`-- package.json                 # Frontend scripts and dependencies
+`-- README.md
 ```
 
 ## Getting Started
@@ -81,24 +83,28 @@ The home page highlights the main idea: type code, watch the data structure move
 Install dependencies:
 
 ```bash
+cd frontend
 npm install
 ```
 
 Start the Vite development server:
 
 ```bash
+cd frontend
 npm run dev
 ```
 
 Build for production:
 
 ```bash
+cd frontend
 npm run build
 ```
 
 Preview the production build:
 
 ```bash
+cd frontend
 npm run preview
 ```
 
