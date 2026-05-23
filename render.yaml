@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: shahira-code-beta
+    runtime: java
+    buildCommand: ./mvnw -q -DskipTests package
+    startCommand: java -jar target/*.jar
+    rootDir: backend
+    envVars:
+      - key: JAVA_VERSION
+        value: 17
