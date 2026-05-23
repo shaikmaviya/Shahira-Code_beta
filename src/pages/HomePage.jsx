@@ -251,7 +251,7 @@ export default function HomePage({
 
       <footer data-reveal>
         <div className="fl">Shahira <em>Code</em></div>
-        <span className="fn2">Built for students. Powered by Shahira Pvt Ltd.</span>
+        <span className="fn2">Built for students. Powered by Shahira</span>
         <span className="fn2">Copyright 2026 Shahira Code</span>
       </footer>
     </>
