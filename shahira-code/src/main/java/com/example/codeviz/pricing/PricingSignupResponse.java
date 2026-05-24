@@ -3,9 +3,9 @@ package com.example.codeviz.pricing;
 import java.time.LocalDateTime;
 
 public record PricingSignupResponse(
-    Long id,
+    String id,
     String planName,
-    int price,
+    Integer price,
     String currency,
     String status,
     LocalDateTime createdAt

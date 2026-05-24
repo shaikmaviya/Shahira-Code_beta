@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.example.codeviz.auth.UserEntity;
 
@@ -24,14 +23,13 @@ public class UserProblemService {
             .toList();
     }
 
-    @Transactional
     public UserProblemResponse saveProblem(UserEntity user, UserProblemRequest request) {
         UserProblemEntity entity = userProblemRepository
             .findByUserIdAndProblemId(user.getId(), request.problemId())
             .orElseGet(UserProblemEntity::new);
 
         if (entity.getId() == null) {
-            entity.setUser(user);
+            entity.setUserId(user.getId());
             entity.setProblemId(normalize(request.problemId()));
             entity.setSavedAt(LocalDateTime.now());
         }
@@ -49,7 +47,6 @@ public class UserProblemService {
         return toResponse(userProblemRepository.save(entity));
     }
 
-    @Transactional
     public void deleteProblem(UserEntity user, String problemId) {
         userProblemRepository.deleteByUserIdAndProblemId(user.getId(), problemId);
     }

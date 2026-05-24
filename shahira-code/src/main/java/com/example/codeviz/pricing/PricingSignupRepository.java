@@ -1,6 +1,6 @@
 package com.example.codeviz.pricing;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface PricingSignupRepository extends JpaRepository<PricingSignupEntity, Long> {
+public interface PricingSignupRepository extends MongoRepository<PricingSignupEntity, String> {
 }

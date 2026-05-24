@@ -2,64 +2,41 @@ package com.example.codeviz.profile;
 
 import java.time.LocalDateTime;
 
-import com.example.codeviz.auth.UserEntity;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
-
-@Entity
-@Table(
-    name = "user_problem_progress",
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uk_user_progress", columnNames = {"user_id", "problem_id"})
-    }
-)
+@Document(collection = "user_problem_progress")
+@CompoundIndex(name = "uk_user_progress", def = "{'userId': 1, 'problemId': 1}", unique = true)
 public class UserProblemProgressEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private UserEntity user;
+    private String userId;
 
-    @Column(name = "problem_id", nullable = false, length = 100)
     private String problemId;
 
-    @Column(nullable = false, length = 30)
     private String status;
 
-    @Column(name = "attempts", nullable = false)
     private int attempts;
 
-    @Column(name = "last_attempt_at")
     private LocalDateTime lastAttemptAt;
 
-    @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
-    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public UserEntity getUser() {
-        return user;
+    public String getUserId() {
+        return userId;
     }
 
-    public void setUser(UserEntity user) {
-        this.user = user;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public String getProblemId() {

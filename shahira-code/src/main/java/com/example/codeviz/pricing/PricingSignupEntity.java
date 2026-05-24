@@ -2,55 +2,37 @@ package com.example.codeviz.pricing;
 
 import java.time.LocalDateTime;
 
-import com.example.codeviz.auth.UserEntity;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-
-@Entity
-@Table(name = "pricing_signups")
+@Document(collection = "pricing_signups")
 public class PricingSignupEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private UserEntity user;
+    private String userId;
 
-    @Column(name = "plan_name", nullable = false, length = 40)
     private String planName;
 
-    @Column(nullable = false)
-    private int price;
+    private Integer price;
 
-    @Column(nullable = false, length = 10)
     private String currency;
 
-    @Column(nullable = false, length = 20)
     private String status;
 
-    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public UserEntity getUser() {
-        return user;
+    public String getUserId() {
+        return userId;
     }
 
-    public void setUser(UserEntity user) {
-        this.user = user;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public String getPlanName() {
@@ -61,11 +43,11 @@ public class PricingSignupEntity {
         this.planName = planName;
     }
 
-    public int getPrice() {
+    public Integer getPrice() {
         return price;
     }
 
-    public void setPrice(int price) {
+    public void setPrice(Integer price) {
         this.price = price;
     }
 

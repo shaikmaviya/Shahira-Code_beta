@@ -7,7 +7,6 @@ import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -32,7 +31,6 @@ public class AuthService {
         this.googleTokenVerifier = googleTokenVerifier;
     }
 
-    @Transactional
     public AuthResponse signup(SignupRequest request) {
         String name = normalize(request.name());
         String email = normalize(request.email()).toLowerCase();
@@ -63,13 +61,10 @@ public class AuthService {
         user.setUpdatedAt(LocalDateTime.now());
         UserEntity savedUser = userRepository.save(user);
 
-        var sessionToken = buildToken(savedUser);
-        SessionTokenEntity savedToken = saveToken(sessionToken);
-
+        SessionTokenEntity savedToken = saveToken(buildToken(savedUser));
         return new AuthResponse(savedToken.getToken(), toAuthUser(savedUser));
     }
 
-    @Transactional
     public AuthResponse login(LoginRequest request) {
         String email = normalize(request.email()).toLowerCase();
         String password = request.password() == null ? "" : request.password();
@@ -85,13 +80,10 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid email or password.");
         }
 
-        var sessionToken = buildToken(user);
-        SessionTokenEntity savedToken = saveToken(sessionToken);
-
+        SessionTokenEntity savedToken = saveToken(buildToken(user));
         return new AuthResponse(savedToken.getToken(), toAuthUser(user));
     }
 
-    @Transactional
     public AuthResponse googleLogin(GoogleLoginRequest request) {
         String idToken = normalize(request.idToken());
         if (idToken.isEmpty()) {
@@ -112,7 +104,6 @@ public class AuthService {
                 created.setName(resolvedName);
                 created.setEmail(normalizedEmail);
                 created.setProvider(PROVIDER_GOOGLE);
-                // Keep a non-empty hash to satisfy schema constraints for social-login users.
                 created.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
                 created.setCreatedAt(LocalDateTime.now());
                 created.setUpdatedAt(LocalDateTime.now());
@@ -126,9 +117,7 @@ public class AuthService {
             user = userRepository.save(user);
         }
 
-        var sessionToken = buildToken(user);
-        SessionTokenEntity savedToken = saveToken(sessionToken);
-
+        SessionTokenEntity savedToken = saveToken(buildToken(user));
         return new AuthResponse(savedToken.getToken(), toAuthUser(user));
     }
 
@@ -138,10 +127,17 @@ public class AuthService {
         SessionTokenEntity sessionToken = sessionTokenRepository.findByToken(token)
             .orElseThrow(() -> new IllegalArgumentException("Invalid or expired token."));
 
-        return toAuthUser(sessionToken.getUser());
+        String userId = sessionToken.getUserId();
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException("Invalid or expired token.");
+        }
+
+        UserEntity user = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("Invalid or expired token."));
+
+        return toAuthUser(user);
     }
 
-    @Transactional
     public void logout(String authorizationHeader) {
         String token = extractBearerToken(authorizationHeader);
         sessionTokenRepository.deleteByToken(token);
@@ -150,7 +146,7 @@ public class AuthService {
     private SessionTokenEntity buildToken(UserEntity user) {
         SessionTokenEntity sessionToken = new SessionTokenEntity();
         sessionToken.setToken(UUID.randomUUID().toString());
-        sessionToken.setUser(user);
+        sessionToken.setUserId(user.getId());
         sessionToken.setCreatedAt(LocalDateTime.now());
         return sessionToken;
     }

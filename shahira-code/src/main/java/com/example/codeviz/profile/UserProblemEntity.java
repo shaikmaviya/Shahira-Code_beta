@@ -2,79 +2,51 @@ package com.example.codeviz.profile;
 
 import java.time.LocalDateTime;
 
-import com.example.codeviz.auth.UserEntity;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
-
-@Entity
-@Table(
-    name = "user_problems",
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uk_user_problem", columnNames = {"user_id", "problem_id"})
-    }
-)
+@Document(collection = "user_problems")
+@CompoundIndex(name = "uk_user_problem", def = "{'userId': 1, 'problemId': 1}", unique = true)
 public class UserProblemEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private UserEntity user;
+    private String userId;
 
-    @Column(name = "problem_id", nullable = false, length = 100)
     private String problemId;
 
-    @Column(nullable = false, length = 200)
     private String title;
 
-    @Column(nullable = false, length = 80)
     private String topic;
 
-    @Column(nullable = false, length = 20)
     private String level;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
     private String statement;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
     private String input;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
     private String output;
 
-    @Column(name = "solution_code", nullable = false, columnDefinition = "TEXT")
     private String solutionCode;
 
-    @Column(nullable = false, length = 30)
     private String status;
 
-    @Column(name = "saved_at", nullable = false)
     private LocalDateTime savedAt;
 
-    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public UserEntity getUser() {
-        return user;
+    public String getUserId() {
+        return userId;
     }
 
-    public void setUser(UserEntity user) {
-        this.user = user;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public String getProblemId() {

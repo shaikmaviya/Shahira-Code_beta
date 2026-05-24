@@ -3,7 +3,6 @@ package com.example.codeviz.profile;
 import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.example.codeviz.auth.UserEntity;
 
@@ -22,13 +21,12 @@ public class UserEditorStateService {
             .orElseGet(() -> new UserEditorStateResponse("", "", null));
     }
 
-    @Transactional
     public UserEditorStateResponse upsertState(UserEntity user, UserEditorStateRequest request) {
         UserEditorStateEntity entity = editorStateRepository.findByUserId(user.getId())
             .orElseGet(UserEditorStateEntity::new);
 
         if (entity.getId() == null) {
-            entity.setUser(user);
+            entity.setUserId(user.getId());
         }
 
         if (request.code() != null) {

@@ -2,49 +2,36 @@ package com.example.codeviz.auth;
 
 import java.time.LocalDateTime;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "users")
+@Document(collection = "users")
 public class UserEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, unique = true, length = 190)
+    @Indexed(unique = true)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
-    @Column(nullable = false, length = 30)
     private String provider;
 
-    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
-    @Column(name = "bio", length = 400)
     private String bio;
 
-    @Column(name = "active_plan", nullable = false, length = 30)
     private String activePlan = "free";
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 

@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.example.codeviz.auth.UserEntity;
 
@@ -24,7 +23,6 @@ public class UserProblemProgressService {
             .toList();
     }
 
-    @Transactional
     public UserProblemProgressResponse upsertProgress(UserEntity user, UserProblemProgressRequest request) {
         UserProblemProgressEntity entity = progressRepository
             .findByUserIdAndProblemId(user.getId(), request.problemId())
@@ -33,7 +31,7 @@ public class UserProblemProgressService {
         LocalDateTime now = LocalDateTime.now();
 
         if (entity.getId() == null) {
-            entity.setUser(user);
+            entity.setUserId(user.getId());
             entity.setProblemId(normalize(request.problemId()));
             entity.setAttempts(0);
         }

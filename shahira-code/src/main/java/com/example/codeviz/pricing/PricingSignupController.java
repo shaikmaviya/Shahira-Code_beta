@@ -43,9 +43,11 @@ public class PricingSignupController {
             String activePlan = normalizePlan(request.planName());
 
             PricingSignupEntity entity = new PricingSignupEntity();
-            entity.setUser(user);
+            entity.setUserId(user.getId());
             entity.setPlanName(activePlan);
-            entity.setPrice(request.price() == null ? 0 : request.price());
+            Integer price = request.price();
+            Integer priceValue = price == null ? 0 : price;
+            entity.setPrice(priceValue);
             entity.setCurrency(normalize(request.currency(), "INR"));
             entity.setStatus("active");
             entity.setCreatedAt(LocalDateTime.now());

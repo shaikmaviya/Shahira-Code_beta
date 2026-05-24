@@ -1,35 +1,25 @@
 package com.example.codeviz.auth;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "session_tokens")
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+@Document(collection = "session_tokens")
 public class SessionTokenEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Indexed(unique = true)
     private String token;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private UserEntity user;
+    private String userId;
 
-    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
@@ -41,12 +31,12 @@ public class SessionTokenEntity {
         this.token = token;
     }
 
-    public UserEntity getUser() {
-        return user;
+    public String getUserId() {
+        return userId;
     }
 
-    public void setUser(UserEntity user) {
-        this.user = user;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public LocalDateTime getCreatedAt() {

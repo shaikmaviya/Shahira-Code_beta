@@ -6,16 +6,26 @@ import org.springframework.stereotype.Service;
 public class AuthTokenService {
 
     private final SessionTokenRepository sessionTokenRepository;
+    private final UserRepository userRepository;
 
-    public AuthTokenService(SessionTokenRepository sessionTokenRepository) {
+    public AuthTokenService(SessionTokenRepository sessionTokenRepository, UserRepository userRepository) {
         this.sessionTokenRepository = sessionTokenRepository;
+        this.userRepository = userRepository;
     }
 
     public UserEntity requireUser(String authorizationHeader) {
         String token = extractBearerToken(authorizationHeader);
-        return sessionTokenRepository.findByToken(token)
-            .orElseThrow(() -> new IllegalArgumentException("Invalid or expired token."))
-            .getUser();
+
+        SessionTokenEntity sessionToken = sessionTokenRepository.findByToken(token)
+            .orElseThrow(() -> new IllegalArgumentException("Invalid or expired token."));
+
+        String userId = sessionToken.getUserId();
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException("Invalid or expired token.");
+        }
+
+        return userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("Invalid or expired token."));
     }
 
     private String extractBearerToken(String authorizationHeader) {

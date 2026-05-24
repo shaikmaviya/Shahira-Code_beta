@@ -7,75 +7,66 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-@Component
+@Service
 public class GoogleTokenVerifier {
 
-    private final HttpClient httpClient = HttpClient.newHttpClient();
-    private final ObjectMapper objectMapper;
     private final String configuredClientId;
+    private final ObjectMapper objectMapper;
 
     public GoogleTokenVerifier(
-        ObjectMapper objectMapper,
-        @Value("${app.auth.google.client-id:${GOOGLE_CLIENT_ID:}}") String configuredClientId
+        @Value("${app.auth.google.client-id:${GOOGLE_CLIENT_ID:}}") String configuredClientId,
+        ObjectMapper objectMapper
     ) {
-        this.objectMapper = objectMapper;
         this.configuredClientId = configuredClientId == null ? "" : configuredClientId.trim();
+        this.objectMapper = objectMapper;
     }
 
     public GoogleProfile verify(String idToken) {
-        String encodedToken = URLEncoder.encode(idToken, StandardCharsets.UTF_8);
-        String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + encodedToken;
-
-        HttpRequest request = HttpRequest.newBuilder(URI.create(url)).GET().build();
-
-        HttpResponse<String> response;
-        try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            throw new IllegalArgumentException("Could not verify Google token.");
-        } catch (IOException ex) {
-            throw new IllegalArgumentException("Could not verify Google token.");
-        }
-
-        if (response.statusCode() != 200) {
-            throw new IllegalArgumentException("Invalid Google token.");
+        String token = idToken == null ? "" : idToken.trim();
+        if (token.isEmpty()) {
+            throw new IllegalArgumentException("Google ID token is required.");
         }
 
         try {
-            JsonNode payload = objectMapper.readTree(response.body());
-            String email = readText(payload, "email");
-            String name = readText(payload, "name");
-            String audience = readText(payload, "aud");
-            String emailVerified = readText(payload, "email_verified");
+            String encoded = URLEncoder.encode(token, StandardCharsets.UTF_8);
+            URI uri = URI.create("https://oauth2.googleapis.com/tokeninfo?id_token=" + encoded);
+            HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
+            HttpResponse<String> response = HttpClient.newHttpClient()
+                .send(request, HttpResponse.BodyHandlers.ofString());
 
-            if (!"true".equalsIgnoreCase(emailVerified)) {
-                throw new IllegalArgumentException("Google email is not verified.");
+            if (response.statusCode() != 200) {
+                throw new IllegalArgumentException("Google ID token is invalid.");
             }
 
-            if (!configuredClientId.isEmpty() && !configuredClientId.equals(audience)) {
-                throw new IllegalArgumentException("Google token audience does not match application client ID.");
+            Map<String, Object> payload = objectMapper.readValue(response.body(), new TypeReference<>() {
+            });
+            String email = asString(payload.get("email"));
+            String name = asString(payload.get("name"));
+            String aud = asString(payload.get("aud"));
+
+            if (!configuredClientId.isBlank() && !configuredClientId.equals(aud)) {
+                throw new IllegalArgumentException("Google client ID mismatch.");
             }
 
             return new GoogleProfile(name, email);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IllegalArgumentException("Unable to verify Google ID token.");
         } catch (IOException ex) {
-            throw new IllegalArgumentException("Invalid response from Google token verification.");
+            throw new IllegalArgumentException("Unable to verify Google ID token.");
         }
     }
 
-    private String readText(JsonNode node, String fieldName) {
-        JsonNode valueNode = node.get(fieldName);
-        if (valueNode == null || valueNode.isNull()) {
-            return "";
-        }
-        return valueNode.asText("");
+    private String asString(Object value) {
+        return value == null ? "" : value.toString();
     }
 
     public record GoogleProfile(String name, String email) {
