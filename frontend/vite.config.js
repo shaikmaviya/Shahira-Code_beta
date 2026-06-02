@@ -1,10 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+const isVercelBuild = Boolean(process.env.VERCEL);
+
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: "../shahira-code/src/main/resources/static",
+    outDir: isVercelBuild ? "dist" : "../shahira-code/src/main/resources/static",
     emptyOutDir: true
   },
   server: {
