@@ -9,6 +9,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+import javax.net.ssl.SSLContext;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +22,7 @@ public class GoogleTokenVerifier {
 
     private final String configuredClientId;
     private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
 
     public GoogleTokenVerifier(
         @Value("${app.auth.google.client-id:${GOOGLE_CLIENT_ID:}}") String configuredClientId,
@@ -27,6 +30,22 @@ public class GoogleTokenVerifier {
     ) {
         this.configuredClientId = configuredClientId == null ? "" : configuredClientId.trim();
         this.objectMapper = objectMapper;
+        this.httpClient = buildHttpClient();
+    }
+
+    private HttpClient buildHttpClient() {
+        try {
+            SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
+            sslContext.init(null, null, null);
+            return HttpClient.newBuilder()
+                .sslContext(sslContext)
+                .version(HttpClient.Version.HTTP_1_1)
+                .build();
+        } catch (Exception ex) {
+            return HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .build();
+        }
     }
 
     public GoogleProfile verify(String idToken) {
@@ -39,8 +58,10 @@ public class GoogleTokenVerifier {
             String encoded = URLEncoder.encode(token, StandardCharsets.UTF_8);
             URI uri = URI.create("https://oauth2.googleapis.com/tokeninfo?id_token=" + encoded);
             HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
-            HttpResponse<String> response = HttpClient.newHttpClient()
-                .send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(
+                request,
+                HttpResponse.BodyHandlers.ofString()
+            );
 
             if (response.statusCode() != 200) {
                 throw new IllegalArgumentException("Google ID token is invalid.");
