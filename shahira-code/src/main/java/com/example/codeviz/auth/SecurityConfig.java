@@ -32,7 +32,7 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .headers(headers -> headers
                 .crossOriginOpenerPolicy(opener ->
-                    opener.policy(CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy.SAME_ORIGIN_ALLOW_POPUPS)
+                    opener.policy(CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy.UNSAFE_NONE)
                 )
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
